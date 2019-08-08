@@ -54,12 +54,24 @@ func main() {
 
 	// register function listeners
 	println("Registering REST handlers")
+	http.HandleFunc("/health", healthHandler)
 	http.HandleFunc("/getAccounts", basicAuth(getAccountHandler))
 
 	// start HTTP listener
 	println("Starting HTTP Listener...")
 	println("Connecting to VBCS Endpoint: " + GlobalConfig.ECALBaseURL)
 	http.ListenAndServe(":80", nil)
+}
+
+//
+// HTTP handler for health checks
+//
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	// assume that if the service is running and successfully loaded config and LOB mappings
+	// then return okay health.  In the future could be modified to poll the downstream service live
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(200)
+	fmt.Fprintf(w, "HEALTH_OK")
 }
 
 //
