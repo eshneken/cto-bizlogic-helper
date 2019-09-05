@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 
 	"github.com/tidwall/gjson"
@@ -112,7 +113,7 @@ func getAccountList(userEmail string, isManager bool) (string, error) {
 	client := &http.Client{}
 
 	// build the querystring
-	queryString := "?fields=id,userEmail;userAccountCollection.accountObject:id,accountName,accountLOB,createdBy;userAccountCollection.accountObject.opportunityCollection:id,opportunityID&limit=5000&onlyData=true"
+	queryString := "?fields=id,userEmail;userAccountCollection.accountObject:id,accountName,accountLOB,createdBy;userAccountCollection.accountObject.opportunityCollection:id,opportunityID&limit=9000&onlyData=true"
 	if isManager {
 		queryString += "&q=manager='" + userEmail + "'"
 	} else {
@@ -157,8 +158,8 @@ func getAccountList(userEmail string, isManager bool) (string, error) {
 			if !accountExists && len(accountID) > 0 {
 				accountMap[accountID] = Account{
 					AccountID:        accountID,
-					AccountName:      LineOfBusinessMapping[gjson.Get(account, "accountLOB").String()],
-					LOB:              gjson.Get(account, "accountName").String(),
+					LOB:              LineOfBusinessMapping[gjson.Get(account, "accountLOB").String()],
+					AccountName:      gjson.Get(account, "accountName").String(),
 					SolutionEngineer: gjson.Get(account, "createdBy").String(),
 					NumOpportunities: gjson.Get(account, "opportunityCollection.count").String()}
 			}
@@ -174,6 +175,13 @@ func getAccountList(userEmail string, isManager bool) (string, error) {
 	for _, value := range accountMap {
 		accountArray = append(accountArray, value)
 	}
+
+	// sort the array by account name
+	sort.Slice(accountArray[:], func(i, j int) bool {
+		return accountArray[i].AccountName < accountArray[j].AccountName
+	})
+
+	// return the JSON representation
 	accountJSON, err := json.Marshal(accountArray)
 	if err != nil {
 		return "", err
