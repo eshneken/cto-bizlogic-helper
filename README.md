@@ -21,14 +21,14 @@ This utility runs as an http server on a compute instance.  It listens, by defau
 ## Building the service from code
 The following steps can be followed to build this service on Oracle Cloud Infrastructure (OCI):
 1. Create a VCN with security list ingress access for TCP/80
-2. Create compute instance from "Oracle Developer" marketplace image
-3. SSH into instance and open ingress for TCP/80 in linux firewall
-    a. sudo firewall-cmd --zone=public --add-port=80/tcp --permanent
-    b. sudo firewall-cmd --reload
-4. Clone git repo (git clone {{this repo name}})
-    a. git clone https://github.com/eshneken/cto-ecal-bizlogic
-5. Download gjson dependency package 
-    a. sudo go get -u github.com/tidwall/gjson
+1. Create compute instance from "Oracle Developer" marketplace image
+1. SSH into instance and open ingress for TCP/80 in linux firewall
+    1. sudo firewall-cmd --zone=public --add-port=80/tcp --permanent
+    1. sudo firewall-cmd --reload
+1. Clone git repo (git clone {{this repo name}})
+    1. git clone https://github.com/eshneken/cto-ecal-bizlogic
+1. Download gjson dependency package 
+    1. sudo go get -u github.com/tidwall/gjson
 6. Download go-oracle dependency package 
     a. sudo go get -u gopkg.in/goracle.v2
 7. Upload the ATP wallet file to the instance, copy to ~/wallet, and unzip the contents into that folder
