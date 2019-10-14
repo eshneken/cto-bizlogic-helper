@@ -4,6 +4,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,17 +13,22 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/tidwall/gjson"
+	_ "gopkg.in/goracle.v2"
 )
 
 // Config holds all config data loaded from local config.json file
 type Config struct {
-	VBCSUsername    string
-	VBCSPassword    string
-	ECALBaseURL     string
-	ServiceUsername string
-	ServicePassword string
+	ServiceListenPort     string
+	ServiceUsername       string
+	ServicePassword       string
+	DBConnectString       string
+	ManagerHierarchyQuery string
+	VBCSUsername          string
+	VBCSPassword          string
+	ECALBaseURL           string
 }
 
 // Account is the type of the output for getAccounts
@@ -36,6 +42,9 @@ type Account struct {
 
 // GlobalConfig is a global holder for configuration information
 var GlobalConfig Config
+
+// DBPool is the database connection pool
+var DBPool *sql.DB
 
 // LineOfBusinessMapping maps LOB types to descriptions
 var LineOfBusinessMapping map[string]string
@@ -53,15 +62,25 @@ func main() {
 		return
 	}
 
+	// initialize database connection pool
+	DBPool, err = sql.Open("goracle", GlobalConfig.DBConnectString)
+	if err != nil {
+		println(err)
+		return
+	}
+	defer DBPool.Close()
+
 	// register function listeners
 	println("Registering REST handlers")
 	http.HandleFunc("/health", healthHandler)
 	http.HandleFunc("/getAccounts", basicAuth(getAccountHandler))
+	http.HandleFunc("/getManagerQuery", basicAuth(getManagerQueryHandler))
 
 	// start HTTP listener
-	println("Starting HTTP Listener...")
 	println("Connecting to VBCS Endpoint: " + GlobalConfig.ECALBaseURL)
-	http.ListenAndServe(":80", nil)
+	println("Connecting to ATP Connect String: " + GlobalConfig.DBConnectString)
+	println("Starting HTTP Listener on port " + GlobalConfig.ServiceListenPort)
+	http.ListenAndServe(":"+GlobalConfig.ServiceListenPort, nil)
 }
 
 //
@@ -73,6 +92,29 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(200)
 	fmt.Fprintf(w, "HEALTH_OK")
+}
+
+//
+// HTTP handler for the getManagerQuery functionality
+//
+func getManagerQueryHandler(w http.ResponseWriter, r *http.Request) {
+	// get query parameters
+	query := r.URL.Query()
+	managerEmail := query.Get("managerEmail")
+
+	// call the helper which does the data mashing
+	result, err := getManagerQuery(managerEmail)
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Fprintf(w, string(err.Error()))
+	}
+
+	// format the result as json
+	json := fmt.Sprintf("{\"query\":\"%s\"}", result)
+
+	// write result to output stream
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, string(json))
 }
 
 //
@@ -101,6 +143,45 @@ func getAccountHandler(w http.ResponseWriter, r *http.Request) {
 	// write result to output stream
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(w, string(json))
+}
+
+//
+// Returns a VBCS query string that lists all managers within a given manager's hierarchy.  Given a manager's email address
+// which is provided as a query parameter (managerEmail) return all other managers below this manager in the reporting structure
+// in the form of "manager = '"
+func getManagerQuery(managerEmail string) (string, error) {
+	rows, err := DBPool.Query(GlobalConfig.ManagerHierarchyQuery, managerEmail)
+	if err != nil {
+		fmt.Printf("[%s] Error running query: ", managerEmail)
+		fmt.Println(err)
+		return "", errors.New("getManagerQuery [" + managerEmail + "] -> error running query: " + err.Error())
+	}
+	defer rows.Close()
+
+	var userEmail, queryString string
+
+	// step through each row returned and add to the query filter using the correct format
+	for rows.Next() {
+		err := rows.Scan(&userEmail)
+		if err != nil {
+			fmt.Printf("[%s] Error scanning row", managerEmail)
+			fmt.Println(err)
+			return "", errors.New("getManagerQuery [" + managerEmail + "] -> error scanning row: " + err.Error())
+		}
+		queryString += fmt.Sprintf("manager = '%s' or ", userEmail)
+	}
+
+	// string the trailing 'or' field if it exists
+	queryString = strings.TrimSuffix(queryString, "or ")
+
+	// if we didn't get any results, just use the email address that was passed in for the query
+	// this shouldn't happen but if it does this will fail gracefully
+	if len(queryString) < 1 {
+		queryString = fmt.Sprintf("manager = '%s'", managerEmail)
+	}
+
+	fmt.Printf("[%s] Query: %s\n", managerEmail, queryString)
+	return queryString, nil
 }
 
 //
