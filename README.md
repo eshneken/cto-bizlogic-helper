@@ -29,20 +29,20 @@ The following steps can be followed to build this service on Oracle Cloud Infras
     1. git clone https://github.com/eshneken/cto-ecal-bizlogic
 1. Download gjson dependency package 
     1. sudo go get -u github.com/tidwall/gjson
-6. Download go-oracle dependency package 
-    a. sudo go get -u gopkg.in/goracle.v2
-7. Upload the ATP wallet file to the instance, copy to ~/wallet, and unzip the contents into that folder
-    a. scp wallet.zip opc@{{ip_addr}}:/home/opc; [LOCAL]
-    b. mkdir wallet; cd wallet; unzip ../wallet.zip; cd ..; rm wallet.zip
-8. Configure TNS settings
-    a. vi /home/opc/wallet/sqlnet.ora and replace ?/network/admin/ with /home/opc/wallet/
-    b. vi ~/.bash_profile and add 'export TNS_ADMIN=/home/opc/wallet' to the bottom
-    c. source ~/.bash_profile
-9. Add a config.json file to the cto-ecal-bizlogic directory with the appropriate values
-10. Build the package
-    a. sudo go build
-11. Run the service (make sure to preserve the environment with -E since TNS_ADMIN is sourced there)
-    a. nohup sudo -E ./cto-ecal-bizlogic > server.out & 
+1. Download go-oracle dependency package 
+    1. sudo go get -u gopkg.in/goracle.v2
+1. Upload the ATP wallet file to the instance, copy to ~/wallet, and unzip the contents into that folder
+    1. scp wallet.zip opc@{{ip_addr}}:/home/opc; [LOCAL]
+    1. mkdir wallet; cd wallet; unzip ../wallet.zip; cd ..; rm wallet.zip
+1. Configure TNS settings
+    1. vi /home/opc/wallet/sqlnet.ora and replace ?/network/admin/ with /home/opc/wallet/
+    1. vi ~/.bash_profile and add 'export TNS_ADMIN=/home/opc/wallet' to the bottom
+    1. source ~/.bash_profile
+1. Add a config.json file to the cto-ecal-bizlogic directory with the appropriate values
+1. Build the package
+    1. sudo go build
+1. Run the service (make sure to preserve the environment with -E since TNS_ADMIN is sourced there)
+    1. nohup sudo -E ./cto-ecal-bizlogic > server.out & 
 
 ## Usage
 All endpoints require basic auth username & password
