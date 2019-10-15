@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/tidwall/gjson"
 	_ "gopkg.in/goracle.v2"
@@ -26,6 +27,8 @@ type Config struct {
 	ServicePassword       string
 	DBConnectString       string
 	ManagerHierarchyQuery string
+	InstanceEnvironments  string
+	SchemaNames           string
 	VBCSUsername          string
 	VBCSPassword          string
 	ECALBaseURL           string
@@ -49,6 +52,9 @@ var DBPool *sql.DB
 // LineOfBusinessMapping maps LOB types to descriptions
 var LineOfBusinessMapping map[string]string
 
+// SchemaMap maps the instance-environment key (e.g. dev-stage, prod-live, etc) to the ATP schema name
+var SchemaMap map[string]string
+
 func main() {
 	// read system configuration from config file
 	GlobalConfig = loadConfig("config.json")
@@ -57,6 +63,15 @@ func main() {
 	println("Loading LOB mappings")
 	LineOfBusinessMapping = make(map[string]string)
 	err := loadLinesOfBusiness()
+	if err != nil {
+		println(err)
+		return
+	}
+
+	// load schema mappings
+	println("Loading schema mappings")
+	SchemaMap = make(map[string]string)
+	err = loadSchemaMap()
 	if err != nil {
 		println(err)
 		return
@@ -76,10 +91,14 @@ func main() {
 	http.HandleFunc("/getAccounts", basicAuth(getAccountHandler))
 	http.HandleFunc("/getManagerQuery", basicAuth(getManagerQueryHandler))
 
-	// start HTTP listener
+	// emit endpoint/database information
 	println("Connecting to VBCS Endpoint: " + GlobalConfig.ECALBaseURL)
-	println("Connecting to ATP Connect String: " + GlobalConfig.DBConnectString)
-	println("Starting HTTP Listener on port " + GlobalConfig.ServiceListenPort)
+	dbuser := strings.SplitAfter(GlobalConfig.DBConnectString, "/")
+	sid := strings.SplitAfter(GlobalConfig.DBConnectString, "@")
+	fmt.Printf("Connecting to ATP Connect String: %s*******@%s\n", dbuser[0], sid[1])
+
+	// start HTTP listener
+	println("Starting HTTP Listener on port " + GlobalConfig.ServiceListenPort + "...\n")
 	http.ListenAndServe(":"+GlobalConfig.ServiceListenPort, nil)
 }
 
@@ -101,12 +120,14 @@ func getManagerQueryHandler(w http.ResponseWriter, r *http.Request) {
 	// get query parameters
 	query := r.URL.Query()
 	managerEmail := query.Get("managerEmail")
+	instanceEnv := query.Get("instanceEnvironment")
 
 	// call the helper which does the data mashing
-	result, err := getManagerQuery(managerEmail)
+	result, err := getManagerQuery(managerEmail, instanceEnv)
 	if err != nil {
 		w.WriteHeader(500)
 		fmt.Fprintf(w, string(err.Error()))
+		return
 	}
 
 	// format the result as json
@@ -138,6 +159,7 @@ func getAccountHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(500)
 		fmt.Fprintf(w, string(err.Error()))
+		return
 	}
 
 	// write result to output stream
@@ -148,13 +170,22 @@ func getAccountHandler(w http.ResponseWriter, r *http.Request) {
 //
 // Returns a VBCS query string that lists all managers within a given manager's hierarchy.  Given a manager's email address
 // which is provided as a query parameter (managerEmail) return all other managers below this manager in the reporting structure
-// in the form of "manager = '"
-func getManagerQuery(managerEmail string) (string, error) {
-	rows, err := DBPool.Query(GlobalConfig.ManagerHierarchyQuery, managerEmail)
+// in the form of "manager = '".  In addition to the manager email, the instanceEnvironment identifier (dev-preview, prod-live, etc)
+// is required to key the name of the ATP schema to query
+//
+func getManagerQuery(managerEmail string, instanceEnv string) (string, error) {
+	// inject the correct schema name into the query
+	if len(instanceEnv) < 1 {
+		return "", errors.New("instanceEnvironment query parameter is invalid")
+	}
+	query := strings.ReplaceAll(GlobalConfig.ManagerHierarchyQuery, "%SCHEMA%", SchemaMap[instanceEnv])
+
+	// run the query
+	rows, err := DBPool.Query(query, managerEmail)
 	if err != nil {
-		fmt.Printf("[%s] Error running query: ", managerEmail)
-		fmt.Println(err)
-		return "", errors.New("getManagerQuery [" + managerEmail + "] -> error running query: " + err.Error())
+		thisError := fmt.Sprintf("[%s] [%s] [%s] Error running query: %s", time.Now(), instanceEnv, managerEmail, err.Error())
+		fmt.Println(thisError)
+		return "", errors.New(thisError)
 	}
 	defer rows.Close()
 
@@ -164,9 +195,9 @@ func getManagerQuery(managerEmail string) (string, error) {
 	for rows.Next() {
 		err := rows.Scan(&userEmail)
 		if err != nil {
-			fmt.Printf("[%s] Error scanning row", managerEmail)
-			fmt.Println(err)
-			return "", errors.New("getManagerQuery [" + managerEmail + "] -> error scanning row: " + err.Error())
+			thisError := fmt.Sprintf("[%s] [%s] [%s] Error scanning row: %s", time.Now(), instanceEnv, managerEmail, err.Error())
+			fmt.Println(thisError)
+			return "", errors.New(thisError)
 		}
 		queryString += fmt.Sprintf("manager = '%s' or ", userEmail)
 	}
@@ -180,7 +211,7 @@ func getManagerQuery(managerEmail string) (string, error) {
 		queryString = fmt.Sprintf("manager = '%s'", managerEmail)
 	}
 
-	fmt.Printf("[%s] Query: %s\n", managerEmail, queryString)
+	fmt.Printf("[%s] [%s] [%s] Query: %s\n", time.Now(), instanceEnv, managerEmail, queryString)
 	return queryString, nil
 }
 
@@ -268,6 +299,25 @@ func getAccountList(userEmail string, isManager bool) (string, error) {
 		return "", err
 	}
 	return string(accountJSON), nil
+}
+
+//
+//  Load a global hashmap to map instance-env to ATP schema name
+//
+func loadSchemaMap() error {
+	instanceEnvKeys := strings.Split(GlobalConfig.InstanceEnvironments, ",")
+	schemaNames := strings.Split(GlobalConfig.SchemaNames, ",")
+	if len(instanceEnvKeys) != len(schemaNames) {
+		return errors.New("InstanceEnvironments count doesn't match SchemaNames count.  Check config.json")
+	}
+
+	// create a hashmap for easier runtime lookup
+	for i, item := range instanceEnvKeys {
+		SchemaMap[item] = schemaNames[i]
+		println("\t" + item + " -> " + SchemaMap[item])
+	}
+
+	return nil
 }
 
 //
