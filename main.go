@@ -32,6 +32,7 @@ type Config struct {
 	VBCSUsername          string
 	VBCSPassword          string
 	ECALBaseURL           string
+	IdentityFilename      string
 }
 
 // Account is the type of the output for getAccounts
@@ -90,6 +91,8 @@ func main() {
 	http.HandleFunc("/health", healthHandler)
 	http.HandleFunc("/getAccounts", basicAuth(getAccountHandler))
 	http.HandleFunc("/getManagerQuery", basicAuth(getManagerQueryHandler))
+	http.HandleFunc("/getIdentities", basicAuth(getIdentitiesQueryHandler))
+	http.HandleFunc("/postIdentities", basicAuth(postIdentitiesQueryHandler))
 
 	// emit endpoint/database information
 	println("Connecting to VBCS Endpoint: " + GlobalConfig.ECALBaseURL)
@@ -111,6 +114,41 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(200)
 	fmt.Fprintf(w, "HEALTH_OK")
+}
+
+//
+// HTTP handler that writes the contents of the identities file to the output
+//
+func postIdentitiesQueryHandler(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		fmt.Println(outputHTTPError("postIdentitiesQueryHandler", err, nil))
+		w.WriteHeader(500)
+		return
+	}
+	// write identities to filesystem
+	err = ioutil.WriteFile(GlobalConfig.IdentityFilename, body, 0700)
+	if err != nil {
+		fmt.Println(outputHTTPError("postIdentitiesQueryHandler", err, nil))
+		w.WriteHeader(500)
+	}
+}
+
+//
+// HTTP handler that writes the contents of the identities file to the output
+//
+func getIdentitiesQueryHandler(w http.ResponseWriter, r *http.Request) {
+	// open identities JSON file from filesystem
+	data, err := ioutil.ReadFile(GlobalConfig.IdentityFilename)
+	if err != nil {
+		fmt.Println(outputHTTPError("getIdentitiesQueryHandler", err, nil))
+		w.WriteHeader(500)
+		return
+	}
+
+	// write result to output stream
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, string(data))
 }
 
 //

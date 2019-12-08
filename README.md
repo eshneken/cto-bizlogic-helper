@@ -22,7 +22,7 @@ This utility runs as an http server on a compute instance.  It listens, by defau
 
 ## Building the service from code
 The following steps can be followed to build this service on Oracle Cloud Infrastructure (OCI):
-1. Create a VCN with security list ingress access for TCP/80
+1. Create a VCN with all related resources and update default security list to allow ingress access for TCP/80 and TCP/443
 1. Create compute instance from "Oracle Developer" marketplace image
 1. SSH into instance and open ingress for TCP/80 in linux firewall
     1. sudo firewall-cmd --zone=public --add-port=80/tcp --permanent
