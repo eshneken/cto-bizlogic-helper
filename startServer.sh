@@ -1,3 +1,4 @@
 #!/bin/bash
 
-nohup sudo -E ./cto-ecal-bizlogic > ~/server.out &
+sudo go build main.go
+nohup sudo -E ./cto-bizlogic-helper > ~/server.out &
