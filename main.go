@@ -1,5 +1,5 @@
-//	CTO ECAL Business Logic Helpers
-//	Ed Shnekendorf, 2019, https://github.com/eshneken/cto-ecal-bizlogic
+//	CTO Business Logic Helpers
+//	Ed Shnekendorf, 2019, https://github.com/eshneken/cto-bizlogic-helper
 
 package main
 
