@@ -202,7 +202,7 @@ func getManagerQuery(managerEmail string, instanceEnv string) (string, error) {
 		queryString = fmt.Sprintf("manager = '%s'", managerEmail)
 	}
 
-	fmt.Printf("[%s] [%s] [%s] Query: %s\n", time.Now(), instanceEnv, managerEmail, queryString)
+	fmt.Printf("[%s] [%s] [%s] Query: %s\n", time.Now().Format(time.RFC3339), instanceEnv, managerEmail, queryString)
 	return queryString, nil
 }
 
