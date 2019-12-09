@@ -11,37 +11,23 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"sort"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/tidwall/gjson"
 	_ "gopkg.in/goracle.v2"
 )
 
 // Config holds all config data loaded from local config.json file
 type Config struct {
-	ServiceListenPort     string
-	ServiceUsername       string
-	ServicePassword       string
-	DBConnectString       string
-	ManagerHierarchyQuery string
-	InstanceEnvironments  string
-	SchemaNames           string
-	VBCSUsername          string
-	VBCSPassword          string
-	ECALBaseURL           string
-	IdentityFilename      string
-}
-
-// Account is the type of the output for getAccounts
-type Account struct {
-	AccountID        string
-	AccountName      string
-	LOB              string
-	SolutionEngineer string
-	NumOpportunities string
+	ServiceListenPort         string
+	ServiceUsername           string
+	ServicePassword           string
+	DBConnectString           string
+	IdentityFilename          string
+	InstanceEnvironments      string
+	SchemaNames               string
+	ECALManagerHierarchyQuery string
+	STSManagerHierarchyQuery  string
 }
 
 // GlobalConfig is a global holder for configuration information
@@ -50,9 +36,6 @@ var GlobalConfig Config
 // DBPool is the database connection pool
 var DBPool *sql.DB
 
-// LineOfBusinessMapping maps LOB types to descriptions
-var LineOfBusinessMapping map[string]string
-
 // SchemaMap maps the instance-environment key (e.g. dev-stage, prod-live, etc) to the ATP schema name
 var SchemaMap map[string]string
 
@@ -60,19 +43,10 @@ func main() {
 	// read system configuration from config file
 	GlobalConfig = loadConfig("config.json")
 
-	// load LOB mappings
-	println("Loading LOB mappings")
-	LineOfBusinessMapping = make(map[string]string)
-	err := loadLinesOfBusiness()
-	if err != nil {
-		println(err)
-		return
-	}
-
 	// load schema mappings
 	println("Loading schema mappings")
 	SchemaMap = make(map[string]string)
-	err = loadSchemaMap()
+	err := loadSchemaMap()
 	if err != nil {
 		println(err)
 		return
@@ -89,13 +63,11 @@ func main() {
 	// register function listeners
 	println("Registering REST handlers")
 	http.HandleFunc("/health", healthHandler)
-	http.HandleFunc("/getAccounts", basicAuth(getAccountHandler))
 	http.HandleFunc("/getManagerQuery", basicAuth(getManagerQueryHandler))
 	http.HandleFunc("/getIdentities", basicAuth(getIdentitiesQueryHandler))
 	http.HandleFunc("/postIdentities", basicAuth(postIdentitiesQueryHandler))
 
 	// emit endpoint/database information
-	println("Connecting to VBCS Endpoint: " + GlobalConfig.ECALBaseURL)
 	dbuser := strings.SplitAfter(GlobalConfig.DBConnectString, "/")
 	sid := strings.SplitAfter(GlobalConfig.DBConnectString, "@")
 	fmt.Printf("Connecting to ATP Connect String: %s*******@%s\n", dbuser[0], sid[1])
@@ -177,35 +149,6 @@ func getManagerQueryHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 //
-// HTTP handler for the getAccountList functionality
-//
-func getAccountHandler(w http.ResponseWriter, r *http.Request) {
-	// get query parameters
-	query := r.URL.Query()
-	email := query.Get("email")
-
-	// if user
-	var isManager bool
-	if query.Get("isManager") == "true" {
-		isManager = true
-	} else {
-		isManager = false
-	}
-
-	// call the helper which does the data mashing
-	json, err := getAccountList(email, isManager)
-	if err != nil {
-		w.WriteHeader(500)
-		fmt.Fprintf(w, string(err.Error()))
-		return
-	}
-
-	// write result to output stream
-	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, string(json))
-}
-
-//
 // Returns a VBCS query string that lists all managers within a given manager's hierarchy.  Given a manager's email address
 // which is provided as a query parameter (managerEmail) return all other managers below this manager in the reporting structure
 // in the form of "manager = '".  In addition to the manager email, the instanceEnvironment identifier (dev-preview, prod-live, etc)
@@ -216,7 +159,16 @@ func getManagerQuery(managerEmail string, instanceEnv string) (string, error) {
 	if len(instanceEnv) < 1 {
 		return "", errors.New("instanceEnvironment query parameter is invalid")
 	}
-	query := strings.ReplaceAll(GlobalConfig.ManagerHierarchyQuery, "%SCHEMA%", SchemaMap[instanceEnv])
+
+	// based on the instanceEnvironment key, choose the right schema and query type
+	// depending on whether the caller is ECAL or STS and what environment we're in
+	var template string
+	if strings.HasPrefix(instanceEnv, "ecal-") {
+		template = GlobalConfig.ECALManagerHierarchyQuery
+	} else {
+		template = GlobalConfig.STSManagerHierarchyQuery
+	}
+	query := strings.ReplaceAll(template, "%SCHEMA%", SchemaMap[instanceEnv])
 
 	// run the query
 	rows, err := DBPool.Query(query, managerEmail)
@@ -254,92 +206,6 @@ func getManagerQuery(managerEmail string, instanceEnv string) (string, error) {
 }
 
 //
-// Get all accounts associated with a user whether they are a manager or an individual ECA.  Function takes two parameters:
-// the email of the user and a boolean indicating if they are a manager or not.  Based on this, query is constructed to return
-// a list of all unique permissioned accounts for that user if they are an individual ECA or for all the users in the manager's
-// org if they are a manager.  This function should return all the data needed to build the account list page.
-//
-func getAccountList(userEmail string, isManager bool) (string, error) {
-	client := &http.Client{}
-
-	// build the querystring
-	queryString := "?fields=id,userEmail;userAccountCollection.accountObject:id,accountName,accountLOB,createdBy;userAccountCollection.accountObject.opportunityCollection:id,opportunityID&limit=9000&onlyData=true"
-	if isManager {
-		queryString += "&q=manager='" + userEmail + "'"
-	} else {
-		queryString += "&q=userEmail='" + userEmail + "'"
-	}
-
-	// call the VBCS User BO endpoint
-	req, _ := http.NewRequest("GET", GlobalConfig.ECALBaseURL+"User1"+queryString, nil)
-	req.SetBasicAuth(GlobalConfig.VBCSUsername, GlobalConfig.VBCSPassword)
-	res, err := client.Do(req)
-	if err != nil || res == nil || res.StatusCode != 200 {
-		return "", errors.New(outputHTTPError("Get Accounts for email ["+userEmail+"] and isManager="+strconv.FormatBool(isManager), err, res))
-	}
-	defer res.Body.Close()
-	j, _ := ioutil.ReadAll(res.Body)
-	jsonString := string(j)
-
-	// initialize the result map which will hold only one entry for each account regardless of how many of the manager's
-	// organization are permissioned to it
-	accountMap := make(map[string]Account)
-
-	// for each user's account collection
-	result := gjson.Get(jsonString, "items.#.userAccountCollection.items.#.accountObject.items")
-	result.ForEach(func(key, value gjson.Result) bool {
-		// result JSON has extra array wrappers (for some reason) so we strip them so we can path it
-		accountCollection := value.String()
-		if len(accountCollection) > 2 {
-			accountCollection = accountCollection[1 : len(accountCollection)-1]
-		}
-
-		// iterate over each account
-		gjson.ForEachLine(accountCollection, func(line gjson.Result) bool {
-			// result JSON has extra array wrappers (for some reason) so we strip them so we can path it
-			account := line.String()
-			if len(account) > 2 {
-				account = account[1 : len(account)-1]
-			}
-
-			// If the account has not yet been added to the result map that add it, otherwise continue
-			accountID := gjson.Get(account, "id").String()
-			_, accountExists := accountMap[accountID]
-			if !accountExists && len(accountID) > 0 {
-				accountMap[accountID] = Account{
-					AccountID:        accountID,
-					LOB:              LineOfBusinessMapping[gjson.Get(account, "accountLOB").String()],
-					AccountName:      gjson.Get(account, "accountName").String(),
-					SolutionEngineer: gjson.Get(account, "createdBy").String(),
-					NumOpportunities: gjson.Get(account, "opportunityCollection.count").String()}
-			}
-
-			return true // keep iterating
-		})
-
-		return true // keep iterating
-	})
-
-	// return map data as JSON
-	accountArray := []Account{}
-	for _, value := range accountMap {
-		accountArray = append(accountArray, value)
-	}
-
-	// sort the array by account name
-	sort.Slice(accountArray[:], func(i, j int) bool {
-		return accountArray[i].AccountName < accountArray[j].AccountName
-	})
-
-	// return the JSON representation
-	accountJSON, err := json.Marshal(accountArray)
-	if err != nil {
-		return "", err
-	}
-	return string(accountJSON), nil
-}
-
-//
 //  Load a global hashmap to map instance-env to ATP schema name
 //
 func loadSchemaMap() error {
@@ -353,38 +219,6 @@ func loadSchemaMap() error {
 	for i, item := range instanceEnvKeys {
 		SchemaMap[item] = schemaNames[i]
 		println("\t" + item + " -> " + SchemaMap[item])
-	}
-
-	return nil
-}
-
-//
-//  Load a global hashmap LOB key to description (e.g. enterprise, mid-market, etc)
-//
-func loadLinesOfBusiness() error {
-	client := &http.Client{}
-
-	// build query
-	queryString := "?fields=id,lookupDescription&q=lookupType='LOB'&onlyData=true"
-	req, _ := http.NewRequest("GET", GlobalConfig.ECALBaseURL+"Lookup"+queryString, nil)
-	req.SetBasicAuth(GlobalConfig.VBCSUsername, GlobalConfig.VBCSPassword)
-
-	// get data from VBCS Lookup service
-	res, err := client.Do(req)
-	if err != nil || res == nil || res.StatusCode != 200 {
-		fmt.Println(outputHTTPError("Get LOB Lookup values", err, res))
-		return err
-	}
-	defer res.Body.Close()
-	json, _ := ioutil.ReadAll(res.Body)
-	jsonString := string(json)
-
-	// iterate over each item and add to the lookup map
-	result := gjson.Get(jsonString, "items")
-	for _, item := range result.Array() {
-		id := gjson.Get(item.String(), "id").String()
-		desc := gjson.Get(item.String(), "lookupDescription").String()
-		LineOfBusinessMapping[id] = desc
 	}
 
 	return nil
