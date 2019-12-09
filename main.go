@@ -41,6 +41,7 @@ var SchemaMap map[string]string
 
 func main() {
 	// read system configuration from config file
+	println("CTO-Bizlogic-Helper says w00t!")
 	GlobalConfig = loadConfig("config.json")
 
 	// load schema mappings
