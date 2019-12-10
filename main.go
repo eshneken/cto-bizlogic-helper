@@ -82,11 +82,34 @@ func main() {
 // HTTP handler for health checks
 //
 func healthHandler(w http.ResponseWriter, r *http.Request) {
-	// assume that if the service is running and successfully loaded config and LOB mappings
-	// then return okay health.  In the future could be modified to poll the downstream service live
-	w.Header().Set("Content-Type", "text/html")
-	w.WriteHeader(200)
-	fmt.Fprintf(w, "HEALTH_OK")
+	healthy := true
+
+	// make sure the database connection can be made
+	_, err := DBPool.Query("SELECT SYSDATE FROM DUAL")
+	if err != nil {
+		thisError := fmt.Sprintf("[%s] DB healthcheck failed: %s", time.Now().Format(time.RFC3339), err.Error())
+		fmt.Println(thisError)
+		healthy = false
+	}
+
+	// make sure identity filename exists and is readable
+	_, err = ioutil.ReadFile(GlobalConfig.IdentityFilename)
+	if err != nil {
+		thisError := fmt.Sprintf("[%s] FILE healthcheck failed: %s", time.Now().Format(time.RFC3339), err.Error())
+		fmt.Println(thisError)
+		healthy = false
+	}
+
+	// write appropriate response code based on health condition
+	if healthy {
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(200)
+		fmt.Fprintf(w, "HEALTH_OK")
+	} else {
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(500)
+		fmt.Fprintf(w, "HEALTH_NOT_OK")
+	}
 }
 
 //
@@ -174,7 +197,7 @@ func getManagerQuery(managerEmail string, instanceEnv string) (string, error) {
 	// run the query
 	rows, err := DBPool.Query(query, managerEmail)
 	if err != nil {
-		thisError := fmt.Sprintf("[%s] [%s] [%s] Error running query: %s", time.Now(), instanceEnv, managerEmail, err.Error())
+		thisError := fmt.Sprintf("[%s] [%s] [%s] Error running query: %s", time.Now().Format(time.RFC3339), instanceEnv, managerEmail, err.Error())
 		fmt.Println(thisError)
 		return "", errors.New(thisError)
 	}
@@ -186,7 +209,7 @@ func getManagerQuery(managerEmail string, instanceEnv string) (string, error) {
 	for rows.Next() {
 		err := rows.Scan(&userEmail)
 		if err != nil {
-			thisError := fmt.Sprintf("[%s] [%s] [%s] Error scanning row: %s", time.Now(), instanceEnv, managerEmail, err.Error())
+			thisError := fmt.Sprintf("[%s] [%s] [%s] Error scanning row: %s", time.Now().Format(time.RFC3339), instanceEnv, managerEmail, err.Error())
 			fmt.Println(thisError)
 			return "", errors.New(thisError)
 		}
