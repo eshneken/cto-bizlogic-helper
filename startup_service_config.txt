@@ -3,6 +3,7 @@ Description=CTO Bizlogic Helper Automated Startup
 After=network.target
 
 [Service]
+User=opc
 Type=simple
 ExecStart=/home/opc/cto-bizlogic-helper/startServer.sh
 TimeoutStartSec=0
