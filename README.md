@@ -41,10 +41,30 @@ The following steps can be followed to build this service on Oracle Cloud Infras
     1. vi ~/.bash_profile and add 'export TNS_ADMIN=/home/opc/wallet' to the bottom
     1. source ~/.bash_profile
 1. Add a config.json file to the cto-ecal-bizlogic directory with the appropriate values
+1. Configure the service to run automatically on startup/reboot
+    1. chmod ug+x ./startServer.sh
+    1. sudo vi /etc/systemd/system/cto-bizlogic-helper.service
+        1. paste the contents of startup_service_config.txt into the editor window and save/quit.
+    1. systemctl daemon-reload
+    1. sudo systemctl daemon-reload
+    1. sudo systemctl enable cto-bizlogic-helper.service
+    1. sudo systemctl start cto-bizlogic-helper.service
 1. Build the package
     1. sudo go build
 1. Run the service (make sure to preserve the environment with -E since TNS_ADMIN is sourced there)
-    1. nohup sudo -E ./cto-bizlogic-helper > server.out & 
+    1. nohup sudo -E ./cto-bizlogic-helper > ~/server.out & 
+    
+## Updating the service from code
+If the service code is updated and you need to rebuild/re-rerun then follow these following steps
+1. Find the PID of the running service and kill
+    1. ps -ef |grep cto-bizlogic
+    1. sudo kill %PID%
+1. Get the latest code
+    1. cd ~/cto-bizlogic-helper
+    1. git pull
+1. Update config.json if necessary
+1. Start the service
+    1. ./startServer.sh
 
 ## Usage
 All endpoints require basic auth username & password except for the health check
