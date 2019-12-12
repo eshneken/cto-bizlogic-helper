@@ -1,12 +1,13 @@
 [Unit]
 Description=CTO Bizlogic Helper Automated Startup
-After=network.target
+After=network.target syslog.target sshd.service
 
 [Service]
 User=opc
+Group=opc
 Type=simple
 ExecStart=/home/opc/cto-bizlogic-helper/startServer.sh
-TimeoutStartSec=0
+RemainAfterExit=yes
 
 [Install]
-WantedBy=default.target
+WantedBy=multi-user.target
