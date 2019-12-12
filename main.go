@@ -85,12 +85,13 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	healthy := true
 
 	// make sure the database connection can be made
-	_, err := DBPool.Query("SELECT SYSDATE FROM DUAL")
+	rows, err := DBPool.Query("SELECT SYSDATE FROM DUAL")
 	if err != nil {
 		thisError := fmt.Sprintf("[%s] DB healthcheck failed: %s", time.Now().Format(time.RFC3339), err.Error())
 		fmt.Println(thisError)
 		healthy = false
 	}
+	defer rows.Close()
 
 	// make sure identity filename exists and is readable
 	_, err = ioutil.ReadFile(GlobalConfig.IdentityFilename)
