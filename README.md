@@ -67,6 +67,7 @@ If the service code is updated and you need to rebuild/re-rerun then follow thes
 1. Get the latest code
     1. cd ~/cto-bizlogic-helper
     1. git pull
+    1. sudo go build
 1. Update config.json if necessary
 1. Start the service
     1. ./startServer.sh
