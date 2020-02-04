@@ -11,14 +11,20 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
+	"reflect"
 	"strings"
 	"time"
 
+	"github.com/hashicorp/vault/api"
 	_ "gopkg.in/goracle.v2"
 )
 
 // Config holds all config data loaded from local config.json file
 type Config struct {
+	VaultAddress              string
+	VaultCli                  string
+	VaultRole                 string
 	ServiceListenPort         string
 	ServiceUsername           string
 	ServicePassword           string
@@ -40,9 +46,21 @@ var DBPool *sql.DB
 var SchemaMap map[string]string
 
 func main() {
-	// read system configuration from config file
 	println("CTO-Bizlogic-Helper says w00t!")
-	GlobalConfig = loadConfig("config.json")
+
+	// check to see if we should skip config decoding w/ HashiCorp Vault by looking for the --novault flag
+	// use this for local testing where unencrypted config files are used
+	skipVault := false
+	if len(os.Args) > 1 {
+		if os.Args[1] == "--novault" {
+			skipVault = true
+			println("Running in LOCAL mode with NO HashiCorp Vault integration.")
+		}
+	}
+
+	// read system configuration from config file
+	println("Reading & Decoding config.json")
+	GlobalConfig = loadConfig("config.json", skipVault)
 
 	// load schema mappings
 	println("Loading schema mappings")
@@ -269,23 +287,91 @@ func basicAuth(pass handler) handler {
 }
 
 //
-//  Read the config.json file and parse configuration data into a struct.  On error, panic here.
+//  Read the config.json file and parse configuration data into a struct. Communicate with the HashiCorp Vault server
+//  to retrieve the secret data.  If the environment is secure and vault is not needed, that section can be skipped by
+//  passing skipVault=true.  On error, panic here.
 //
-func loadConfig(filename string) Config {
+func loadConfig(filename string, skipVault bool) Config {
+
+	// open the config file
 	var config = Config{}
 	file, err := os.Open(filename)
 	if err != nil {
-		panic(err.Error())
+		panic("reading config.json: " + err.Error())
 	}
 	defer file.Close()
 
+	// decode config.json into struct
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(&config)
 	if err != nil {
-		panic(err.Error())
+		panic("marshalling to struct: " + err.Error())
+	}
+
+	// if vault integration is off, return the config struct as-is.  no need for further decoding.
+	if skipVault == true {
+		return config
+	}
+
+	// connect to HashiCorp Vault
+	vaultConfig := &api.Config{Address: config.VaultAddress}
+	hashiClient, err := api.NewClient(vaultConfig)
+	if err != nil {
+		panic("connecting to Vault[" + config.VaultAddress + "]: " + err.Error())
+	}
+
+	// get Vault token
+	vaultToken, err := getVaultToken(config)
+	if err != nil {
+		panic("authenticating & getting token: " + err.Error())
+	}
+	hashiClient.SetToken(vaultToken)
+
+	// step through all the struc values and scan for [vault] prefix
+	// which indicates that the value needs to be retrieved from a HashiCorp
+	// vault server
+	v := reflect.ValueOf(config)
+	values := make([]interface{}, v.NumField())
+	for i := 0; i < v.NumField(); i++ {
+		values[i] = v.Field(i).Interface()
+		if strings.HasPrefix(values[i].(string), "[vault]") {
+			vaultKey := strings.TrimPrefix(values[i].(string), "[vault]")
+			vaultValue, err := hashiClient.Logical().Read("cto/" + vaultKey)
+			if vaultValue == nil || err != nil {
+				panic("reading value for key [" + vaultKey + "]: " + err.Error())
+			}
+			reflect.ValueOf(&config).Elem().FieldByName(vaultKey).SetString(vaultValue.Data["value"].(string))
+		}
 	}
 
 	return config
+}
+
+//
+// getVaultToken authenticates against HashiCorp Vault using OCI instance principal credentials, scans the output
+// and returns the session token to be used by the Hashi client.
+//
+func getVaultToken(config Config) (string, error) {
+	// authenticate against Vault using instance principal credentials
+	stdout, err := exec.Command(config.VaultCli, "login", "-address="+config.VaultAddress,
+		"-method=oci", "auth_type=instance", "role="+config.VaultRole).Output()
+	if err != nil {
+		return "", err
+	}
+
+	// scan through the vault cli output and scan for the standalone token line
+	// not that the HasPrefix method includes a space in the pattern after token
+	// to get the correct value
+	token := ""
+	output := strings.Split(string(stdout), "\n")
+	for _, line := range output {
+		if strings.HasPrefix(line, "token ") {
+			fields := strings.Fields(line)
+			token = fields[1]
+		}
+	}
+
+	return token, nil
 }
 
 //

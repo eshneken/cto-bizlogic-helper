@@ -5,6 +5,9 @@ The app requires a file named *config.json* to be present the same directory fro
 
 ```json
 {
+    "VaultAddress": "http://127.0.0.1:8200",
+	"VaultCli": "/home/opc/vault",
+    "VaultRole": "cto-secret-reader",
     "ServiceListenPort": "{{HTTP listen port for this instance}}",
     "ServiceUsername": "{{basic_auth_username_for_this_service}}",
     "ServicePassword": "{{basic_auth_password_for_this_service}}",
@@ -18,7 +21,9 @@ The app requires a file named *config.json* to be present the same directory fro
 ```
 Note that an instance of this service must run in each compartment (e.g. one instance for the DEV compartment and one for PROD).  The InstanceEnvironments example shown above is for the DEV compartment, the PROD compartment whould have a different set of tokens.
 
-This utility runs as an http server on a compute instance.  It listens, by default, on port 80 and requires the appropriate linux and cloud firewall/security list rules to allow incoming traffic to be created.  It also needs outbound access to the internet to access the service with ECALBaseURL
+This utility runs as an http server on a compute instance.  It listens, by default, on port 80 and requires the appropriate linux and cloud firewall/security list rules to allow incoming traffic to be created.  
+
+It is expected that a HashiCorp Vault server is accesible at startup time to decode any secrets from the *config.json* file (those entries are in the form [vault]$Key).  If you're running locally and your *config.json* does not have any secrets, you can skip the vault integration by passing the --novault flag to the startup.
 
 ## Building the service from code
 The following steps can be followed to build this service on Oracle Cloud Infrastructure (OCI):
