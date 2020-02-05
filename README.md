@@ -6,7 +6,7 @@ The app requires a file named *config.json* to be present the same directory fro
 ```json
 {
     "VaultAddress": "http://127.0.0.1:8200",
-	"VaultCli": "/home/opc/vault",
+    "VaultCli": "/home/opc/vault",
     "VaultRole": "cto-secret-reader",
     "ServiceListenPort": "{{HTTP listen port for this instance}}",
     "ServiceUsername": "{{basic_auth_username_for_this_service}}",
@@ -46,19 +46,20 @@ The following steps can be followed to build this service on Oracle Cloud Infras
     1. vi ~/.bash_profile and add 'export TNS_ADMIN=/home/opc/wallet' to the bottom
     1. source ~/.bash_profile
 1. Add a config.json file to the cto-ecal-bizlogic directory with the appropriate values
-1. Configure the service to run automatically on startup/reboot
+1. Add a dummy identities.json file.  This file is necessary in all environments but will be actively updated in the prod environment.  However, its existence drives the health check process so create it so that it exists at startup.
+    1. touch identities.json
+1. Build the package
+    1. sudo go get
+    1. sudo go build
+1. Configure the service to run automatically on startup/reboot.  This will also start the service now.
     1. chmod ug+x ./startServer.sh
     1. sudo vi /etc/systemd/system/cto-bizlogic-helper.service
         1. paste the contents of startup_service_config.txt into the editor window and save/quit.
-    1. systemctl daemon-reload
     1. sudo systemctl daemon-reload
     1. sudo systemctl enable cto-bizlogic-helper.service
     1. sudo systemctl start cto-bizlogic-helper.service
-1. Build the package
-    1. sudo go build
-1. Run the service (make sure to preserve the environment with -E since TNS_ADMIN is sourced there)
-    1. nohup sudo -E ./cto-bizlogic-helper > ~/server.out & 
-    
+1. Verify correct startup by running *cat ~/server.out*.  You should see correct startup messages with no errors or panics.  You can also execute *curl localhost/health* and make sure **HEALTH_OK** is returned.
+
 ## Updating the service from code
 If the service code is updated and you need to rebuild/re-rerun then follow these following steps
 1. Find the PID of the running service and kill
