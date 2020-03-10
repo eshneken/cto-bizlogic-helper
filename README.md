@@ -36,8 +36,8 @@ The following steps can be followed to build this service on Oracle Cloud Infras
     1. git clone https://github.com/eshneken/cto-bizlogic-helper
 1. Download gjson dependency package 
     1. sudo go get -u github.com/tidwall/gjson
-1. Download go-oracle dependency package 
-    1. sudo go get -u gopkg.in/goracle.v2
+1. Download godror dependency package 
+    1. sudo go get github.com/godror/godror
 1. Upload the ATP wallet file to the instance, copy to ~/wallet, and unzip the contents into that folder
     1. scp wallet.zip opc@{{ip_addr}}:/home/opc; [LOCAL]
     1. mkdir wallet; cd wallet; unzip ../wallet.zip; cd ..; rm wallet.zip
@@ -75,10 +75,11 @@ If the service code is updated and you need to rebuild/re-rerun then follow thes
 ## Usage
 All endpoints require basic auth username & password except for the health check
 
-* health:           http://{{hostname}}/health [GET]
-* getManagerQuery:  http://{{hostname}}/getManagerQuery?managerEmail={{email_addr}} [GET]
-* getIdentities:    http://{{hostname}}/getIdentities [GET]
-* postIdentities:   http://{{hostname}}/postIdentities [POST]
+* health:                   http://{{hostname}}/health [GET]
+* getManagerQuery:          http://{{hostname}}/getManagerQuery?managerEmail={{email_addr}}&instanceEnvironment={{instance-env}} [GET]
+* getIdentities:            http://{{hostname}}/getIdentities [GET]
+* postIdentities:           http://{{hostname}}/postIdentities [POST]
+* postOpportunityLookup:    http://{{hostname}}/postOpportunityLookup?instanceEnvironment={{instance-env} [POST]
 
 
 ## Principles for API Usage
@@ -88,3 +89,4 @@ All endpoints require basic auth username & password except for the health check
 ## Third Party Packages Used
 
  * Read-only JSON pathing support:  https://github.com/tidwall/gjson
+ * Oracle Database access:  https://github.com/godror/godror

@@ -1,0 +1,20 @@
+{
+    "items": [
+        {
+            "opportunity_id": "VJKL3",
+            "opportunity_name": "PSFT DR on OCI",
+            "opportunity_owner": "allen.cameron@oracle.com",
+            "close_date": "2020-07-31",
+            "tcv_k": 120,
+            "win_probabilty": 60
+        },
+        {
+            "opportunity_id": "LP43Z",
+            "opportunity_name": "Integration for CIS",
+            "opportunity_owner": "nick.colon@oracle.com",
+            "close_date": "2020-03-15",
+            "tcv_k": 72,
+            "win_probabilty": 40
+        }
+    ]
+}
