@@ -32,12 +32,18 @@ The following steps can be followed to build this service on Oracle Cloud Infras
 1. SSH into instance and open ingress for TCP/80 in linux firewall
     1. sudo firewall-cmd --zone=public --add-port=80/tcp --permanent
     1. sudo firewall-cmd --reload
+1. Set-up GOPATH
+    1. export GOPATH=/usr/share/gocode
+    1. echo "export GOPATH=/usr/share/gocode" >> ~/.bash_profile
+    1. sudo chmod -R 777 $GOPATH
 1. Clone git repo (git clone {{this repo name}})
     1. git clone https://github.com/eshneken/cto-bizlogic-helper
 1. Download gjson dependency package 
-    1. sudo go get -u github.com/tidwall/gjson
+    1. go get -u github.com/tidwall/gjson
 1. Download godror dependency package 
-    1. sudo go get github.com/godror/godror
+    1. go get github.com/godror/godror
+1. Download vault dependency package
+    1. go get github.com/hashicorp/vault
 1. Upload the ATP wallet file to the instance, copy to ~/wallet, and unzip the contents into that folder
     1. scp wallet.zip opc@{{ip_addr}}:/home/opc; [LOCAL]
     1. mkdir wallet; cd wallet; unzip ../wallet.zip; cd ..; rm wallet.zip
@@ -49,8 +55,10 @@ The following steps can be followed to build this service on Oracle Cloud Infras
 1. Add a dummy identities.json file.  This file is necessary in all environments but will be actively updated in the prod environment.  However, its existence drives the health check process so create it so that it exists at startup.
     1. touch identities.json
 1. Build the package
-    1. sudo go get
-    1. sudo go build
+    1. go get
+    1. go build
+1. Allow the service to bind to port 80
+    1. sudo setcap CAP_NET_BIND_SERVICE=+eip /home/opc/cto-bizlogic-helper/cto-bizlogic-helper
 1. Configure the service to run automatically on startup/reboot.  This will also start the service now.
     1. chmod ug+x ./startServer.sh
     1. sudo vi /etc/systemd/system/cto-bizlogic-helper.service

@@ -1,6 +1,8 @@
 //  LookupOpportunityHandler
 //	CTO Business Logic Helpers
 //	Ed Shnekendorf, 2020, https://github.com/eshneken/cto-bizlogic-helper
+//
+// refer to https://golang.org/src/database/sql/sql_test.go for golang SQL samples
 
 package main
 
