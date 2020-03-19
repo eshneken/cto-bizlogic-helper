@@ -90,6 +90,8 @@ All endpoints require basic auth username & password except for the health check
 * postIdentities:           http://{{hostname}}/postIdentities [POST]
 * postOpportunityLookup:    http://{{hostname}}/postOpportunityLookup?instanceEnvironment={{instance-env} [POST]
 
+In production mode the server should always work with HashiCorp Vault.  In development mode, a --novault argument may be passed
+in on the command line when starting the server to disable checking Vault and reading config values at face value.
 
 ## Principles for API Usage
 * OIC REST API Reference:  https://docs.oracle.com/en/cloud/paas/identity-cloud/rest-api/
