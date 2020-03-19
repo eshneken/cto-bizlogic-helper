@@ -25,7 +25,8 @@ func getManagerQueryHandler(w http.ResponseWriter, r *http.Request) {
 	result, err := getManagerQuery(managerEmail, instanceEnv)
 	if err != nil {
 		w.WriteHeader(500)
-		fmt.Fprintf(w, string(err.Error()))
+		fmt.Fprintf(w, "Error in input parameters or processing; please contact your service administrator")
+		fmt.Printf("***ERROR: %s\n", string(err.Error()))
 		return
 	}
 
@@ -46,7 +47,8 @@ func getManagerQueryHandler(w http.ResponseWriter, r *http.Request) {
 func getManagerQuery(managerEmail string, instanceEnv string) (string, error) {
 	// inject the correct schema name into the query
 	if len(instanceEnv) < 1 {
-		return "", errors.New("instanceEnvironment query parameter is invalid")
+		thisError := fmt.Sprintf("[%s] [%s] [%s] instanceEnvironment query parameter is invalid", time.Now().Format(time.RFC3339), instanceEnv, managerEmail)
+		return "", errors.New(thisError)
 	}
 
 	// based on the instanceEnvironment key, choose the right schema and query type
@@ -63,7 +65,6 @@ func getManagerQuery(managerEmail string, instanceEnv string) (string, error) {
 	rows, err := DBPool.Query(query, managerEmail)
 	if err != nil {
 		thisError := fmt.Sprintf("[%s] [%s] [%s] Error running query: %s", time.Now().Format(time.RFC3339), instanceEnv, managerEmail, err.Error())
-		fmt.Println(thisError)
 		return "", errors.New(thisError)
 	}
 	defer rows.Close()
@@ -75,7 +76,6 @@ func getManagerQuery(managerEmail string, instanceEnv string) (string, error) {
 		err := rows.Scan(&userEmail)
 		if err != nil {
 			thisError := fmt.Sprintf("[%s] [%s] [%s] Error scanning row: %s", time.Now().Format(time.RFC3339), instanceEnv, managerEmail, err.Error())
-			fmt.Println(thisError)
 			return "", errors.New(thisError)
 		}
 		queryString += fmt.Sprintf("manager = '%s' or ", userEmail)
