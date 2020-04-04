@@ -84,11 +84,12 @@ If the service code is updated and you need to rebuild/re-rerun then follow thes
 ## Usage
 All endpoints require basic auth username & password except for the health check
 
-* health:                   http://{{hostname}}/health [GET]
-* getManagerQuery:          http://{{hostname}}/getManagerQuery?managerEmail={{email_addr}}&instanceEnvironment={{instance-env}} [GET]
-* getIdentities:            http://{{hostname}}/getIdentities [GET]
-* postIdentities:           http://{{hostname}}/postIdentities [POST]
-* postOpportunityLookup:    http://{{hostname}}/postOpportunityLookup?instanceEnvironment={{instance-env} [POST]
+* health:                           http://{{hostname}}/health [GET]
+* getManagerQuery:                  http://{{hostname}}/getManagerQuery?managerEmail={{email_addr}}&instanceEnvironment={{instance-env}} [GET]
+* getSTSManagerDashboardSummary:    http://{{hostname}}/getSTSManagerDashboardSummary?managerEmail={{email_addr}}&instanceEnvironment={{instance-env}} [GET]
+* getIdentities:                    http://{{hostname}}/getIdentities [GET]
+* postIdentities:                   http://{{hostname}}/postIdentities [POST]
+* postOpportunityLookup:            http://{{hostname}}/postOpportunityLookup?instanceEnvironment={{instance-env} [POST]
 
 In production mode the server should always work with HashiCorp Vault.  In development mode, a --novault argument may be passed
 in on the command line when starting the server to disable checking Vault and reading config values at face value.

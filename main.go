@@ -83,6 +83,7 @@ func main() {
 	println("Registering REST handlers")
 	http.HandleFunc("/health", healthHandler)
 	http.HandleFunc("/getManagerQuery", basicAuth(getManagerQueryHandler))
+	http.HandleFunc("/getSTSManagerDashboardSummary", basicAuth(getSTSManagerDashboardSummaryHandler))
 	http.HandleFunc("/getIdentities", basicAuth(getIdentitiesQueryHandler))
 	http.HandleFunc("/postIdentities", basicAuth(postIdentitiesQueryHandler))
 	http.HandleFunc("/postOpportunityLookup", basicAuth(postOpportunityLookupHandler))

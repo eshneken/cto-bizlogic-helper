@@ -1,4 +1,4 @@
-//  Health Handler
+//  Manager Query
 //	CTO Business Logic Helpers
 //	Ed Shnekendorf, 2020, https://github.com/eshneken/cto-bizlogic-helper
 
