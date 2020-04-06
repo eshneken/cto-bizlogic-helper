@@ -93,6 +93,7 @@ func getSTSManagerDashboardSummary(managerEmail string, instanceEnv string) (str
 			START WITH useremail = :1 
 			CONNECT BY PRIOR useremail = manager
 			)	
+		ORDER BY name ASC
 	`
 	// replace the %SCHEMA% template with the correct schema name
 	query := strings.ReplaceAll(template, "%SCHEMA%", SchemaMap[instanceEnv])
