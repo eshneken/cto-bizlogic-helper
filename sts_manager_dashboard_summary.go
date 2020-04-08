@@ -126,6 +126,6 @@ func getSTSManagerDashboardSummary(managerEmail string, instanceEnv string) (str
 	// string the trailing 'or' field if it exists
 	result = strings.TrimSuffix(result, ",")
 
-	fmt.Printf("[%s] [%s] [%s] getSTSManagerDashboardSummary: results=%d\n", time.Now().Format(time.RFC3339), instanceEnv, managerEmail, count)
+	//fmt.Printf("[%s] [%s] [%s] getSTSManagerDashboardSummary: results=%d\n", time.Now().Format(time.RFC3339), instanceEnv, managerEmail, count)
 	return result, nil
 }

@@ -127,6 +127,6 @@ func getECALAccountQuery(instanceEnv string, userEmail string, isAdmin bool) (st
 	// string the trailing 'or' field if it exists
 	result = strings.TrimSuffix(result, ",")
 
-	fmt.Printf("[%s] [%s] [%s] [%s] getECALAccountQuery: results=%d\n", time.Now().Format(time.RFC3339), instanceEnv, userEmail, strconv.FormatBool(isAdmin), count)
+	//fmt.Printf("[%s] [%s] [%s] [%s] getECALAccountQuery: results=%d\n", time.Now().Format(time.RFC3339), instanceEnv, userEmail, strconv.FormatBool(isAdmin), count)
 	return result, nil
 }
