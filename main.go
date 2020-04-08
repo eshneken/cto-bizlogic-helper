@@ -84,6 +84,8 @@ func main() {
 	http.HandleFunc("/health", healthHandler)
 	http.HandleFunc("/getManagerQuery", basicAuth(getManagerQueryHandler))
 	http.HandleFunc("/getSTSManagerDashboardSummary", basicAuth(getSTSManagerDashboardSummaryHandler))
+	http.HandleFunc("/getECALAccountQuery", basicAuth(getECALAccountQueryHandler))
+	http.HandleFunc("/getECALOpportunityQuery", basicAuth(getECALOpportunityQueryHandler))
 	http.HandleFunc("/getIdentities", basicAuth(getIdentitiesQueryHandler))
 	http.HandleFunc("/postIdentities", basicAuth(postIdentitiesQueryHandler))
 	http.HandleFunc("/postOpportunityLookup", basicAuth(postOpportunityLookupHandler))
