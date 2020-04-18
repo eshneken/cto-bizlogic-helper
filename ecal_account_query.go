@@ -78,8 +78,8 @@ func getECALAccountQuery(instanceEnv string, userEmail string, isAdmin bool) (st
 		WHERE u.useremail = :1 OR u.manager in 
 		(
 		SELECT useremail 
-		FROM VB_VB_B2ODNHURXIX.User1 u 
-		INNER JOIN VB_VB_B2ODNHURXIX.RoleType r 
+		FROM %SCHEMA%.User1 u 
+		INNER JOIN %SCHEMA%.RoleType r 
 		ON u.rolename = r.id WHERE r.rolename = 'Manager' 
 		START WITH useremail = :1 
 		CONNECT BY PRIOR useremail = manager
