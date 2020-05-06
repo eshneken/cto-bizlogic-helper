@@ -62,25 +62,25 @@ func getECALOpportunityQuery(instanceEnv string, userEmail string, isAdmin bool)
 
 	// set the core query
 	var template = `
-		SELECT  DISTINCT(o.id) AS ID,
-			a.id AS AccountID, 
-			a.accountname AS AccountName, 
-			o.opportunityid AS OpportunityID,
-			o.summary AS Summary,
-			NVL(o.projectedARR, 0) AS ARR,
-			NVL(o.ecalPercentComplete, 0) AS ECALPercent,
-			NVL(stg.stage, 'None') AS LatestECALStage,
-			TO_CHAR(o.lastupdatedate, 'MM/DD/YYYY') AS LastActivity,
-			NVL(o.pocRequired, 0) AS POC,
-			NVL(l.lookupdescription, 'None') AS POCStatus,
-			NVL(o.commercialBlockers, 0) AS CommercialBlockers,
-			NVL(o.technicalBlockers, 0) AS TechnicalBlockers
-		FROM %SCHEMA%.User1 u 
-		INNER JOIN %SCHEMA%.UserAccount ua ON ua.user1 = u.id
-		INNER JOIN %SCHEMA%.Account a ON a.id = ua.account
-		INNER JOIN %SCHEMA%.Opportunity o ON o.account = a.id
-		LEFT OUTER JOIN %SCHEMA%.ECALStage stg ON stg.id = o.lateststagedone
-		LEFT OUTER JOIN %SCHEMA%.Lookup l ON l.id = o.pocstatus AND l.lookuptype = 'POC_STATUS'	
+	SELECT  DISTINCT(o.id) AS ID,
+		a.id AS AccountID, 
+		a.accountname AS AccountName, 
+		o.opportunityid AS OpportunityID,
+		o.summary AS Summary,
+		NVL(o.projectedARR, 0) AS ARR,
+		NVL(o.ecalPercentComplete, 0) AS ECALPercent,
+		NVL(stg.stage, 'None') AS LatestECALStage,
+		TO_CHAR(o.lastupdatedate, 'MM/DD/YYYY') AS LastActivity,
+		NVL(th.pocRequired, 0) AS POC,
+		NVL(th.pocStatus, 'None') AS POCStatus,
+		NVL(th.commercialBlockers, 0) AS CommercialBlockers,
+		NVL(th.technicalBlockers, 0) AS TechnicalBlockers
+	FROM %SCHEMA%.User1 u 
+	INNER JOIN %SCHEMA%.UserAccount ua ON ua.user1 = u.id
+	INNER JOIN %SCHEMA%.Account a ON a.id = ua.account
+	INNER JOIN %SCHEMA%.Opportunity o ON o.account = a.id
+	LEFT OUTER JOIN %SCHEMA%.OpportunityTechHealth th ON th.opportunity = o.id
+	LEFT OUTER JOIN %SCHEMA%.ECALStage stg ON stg.id = o.lateststagedone	
 	`
 	// if the user is not an admin (regular user or manager) then append the hierarchical query suffix
 	if isAdmin == false {
