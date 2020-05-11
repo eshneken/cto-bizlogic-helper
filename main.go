@@ -32,6 +32,7 @@ type Config struct {
 	IdentityFilename          string
 	InstanceEnvironments      string
 	SchemaNames               string
+	ECALOpportunitySyncTarget string
 	ECALManagerHierarchyQuery string
 	STSManagerHierarchyQuery  string
 }

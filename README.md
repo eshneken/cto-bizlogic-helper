@@ -14,6 +14,7 @@ The app requires a file named *config.json* to be present the same directory fro
     "DBConnectString": "admin/{{password}}@{{DB SID}}",
     "IdentityFilename": "identities.json",
     "InstanceEnvironments": "ecal-dev-preview,ecal-dev-stage,sts-dev-preview,sts-dev-stage",
+    "ECALOpportunitySyncTarget": "ecal-dev-preview",
     "SchemaNames": "{{dev-preview schema name}},{dev-stage schema name}},{prod-stage schema name}},{prod-live schema name}}",
     "ECALManagerHierarchyQuery": "SELECT UserEmail FROM %SCHEMA%.user1 u INNER JOIN %SCHEMA%.roletype rt ON u.rolename = rt.id WHERE rt.rolename = 'Manager' START WITH useremail = :1 CONNECT BY PRIOR useremail = manager",
     "STSManagerHierarchyQuery": "SELECT UserEmail FROM %SCHEMA%.STSUser u INNER JOIN %SCHEMA%.STSRole r ON u.rolename = r.id WHERE r.rolename = 'Manager' START WITH useremail = :1 CONNECT BY PRIOR useremail = manager"    
@@ -89,7 +90,7 @@ All endpoints require basic auth username & password except for the health check
 * getSTSManagerDashboardSummary:    http://{{hostname}}/getSTSManagerDashboardSummary?managerEmail={{email_addr}}&instanceEnvironment={{instance-env}} [GET]
 * getIdentities:                    http://{{hostname}}/getIdentities [GET]
 * postIdentities:                   http://{{hostname}}/postIdentities [POST]
-* postOpportunityLookup:            http://{{hostname}}/postOpportunityLookup?instanceEnvironment={{instance-env} [POST]
+* postOpportunityLookup:            http://{{hostname}}/postOpportunityLookup [POST]
 
 In production mode the server should always work with HashiCorp Vault.  In development mode, a --novault argument may be passed
 in on the command line when starting the server to disable checking Vault and reading config values at face value.
