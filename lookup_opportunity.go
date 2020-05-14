@@ -20,8 +20,10 @@ type OpportunityLookup struct {
 	OppID          string `json:"opportunity_id"`
 	OppName        string `json:"opportunity_name"`
 	OppOwner       string `json:"opportunity_owner"`
+	TerritoryOwner string `json:"territory_owner"`
 	OppStatus      string `json:"opportunity_status"`
 	CloseDate      string `json:"close_date"`
+	CustomerName   string `json:"customer_name"`
 	ARR            string `json:"pipeline_k"`
 	TCV            string `json:"tcv_k"`
 	WinProbability string `json:"win_probabilty"`
@@ -80,9 +82,9 @@ func postOpportunityLookupHandler(w http.ResponseWriter, r *http.Request) {
 		"INSERT INTO " + schema + ".LookupOpportunity" +
 			"(id, creationdate, lastupdatedate, createdby, lastupdatedby, abcschangenumber, " +
 			"opportunityid, summary, salesrep, projectedarr, anticipatedclosedate, winprobability, " +
-			"projectedtcv, integrationid, registryid, cimid, opportunitystatus) " +
+			"projectedtcv, integrationid, registryid, cimid, opportunitystatus, customername, territoryowner) " +
 			"VALUES(:1, SYSDATE, SYSDATE, 'cto_bizlogic_helper', 'cto_bizlogic_helper', null, :2, :3, " +
-			":4, :5, TO_DATE(:6, 'YYYY-MM-DD\"T\"HH24:MI:SS'), :7, :8, :9, :10, :11, :12)")
+			":4, :5, TO_DATE(:6, 'YYYY-MM-DD\"T\"HH24:MI:SS'), :7, :8, :9, :10, :11, :12, :13, :14)")
 	defer insertStmt.Close()
 	if err != nil {
 		w.WriteHeader(500)
@@ -114,7 +116,7 @@ func postOpportunityLookupHandler(w http.ResponseWriter, r *http.Request) {
 
 		// add opportunity to LookupOpportunity staging table
 		_, err = insertStmt.Exec(i+1, opp.OppID, opp.OppName, opp.OppOwner, arr*1000, opp.CloseDate, winProbability,
-			tcv*1000, opp.IntegrationID, opp.RegistryID, opp.CimID, opp.OppStatus)
+			tcv*1000, opp.IntegrationID, opp.RegistryID, opp.CimID, opp.OppStatus, opp.CustomerName, opp.TerritoryOwner)
 		if err != nil {
 			w.WriteHeader(500)
 			fmt.Fprintf(w, "Error updating opportunities")
@@ -132,8 +134,8 @@ func postOpportunityLookupHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// increment the counter & output at regular intervals
-		tenPercent := int(math.Round(float64(numItems) * 0.1))
-		if i > 0 && i%tenPercent == 0 {
+		twentyPercent := int(math.Round(float64(numItems) * 0.2))
+		if i > 0 && i%twentyPercent == 0 {
 			fmt.Printf("[%s] [%s] postOpportunityLookupHandler: Processed %d opportunities\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, i)
 		}
 		i++

@@ -71,6 +71,7 @@ func main() {
 		println(err)
 		return
 	}
+	println("Routing opportunity data to: " + GlobalConfig.ECALOpportunitySyncTarget)
 
 	// initialize database connection pool
 	DBPool, err = sql.Open("godror", GlobalConfig.DBConnectString)
