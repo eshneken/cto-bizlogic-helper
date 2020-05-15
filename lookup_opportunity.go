@@ -107,6 +107,7 @@ func postOpportunityLookupHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// iterate each opportunity
+	insertedOpps := 0
 	for i, opp := range oppList.Items {
 
 		// convert strings to floats
@@ -115,16 +116,21 @@ func postOpportunityLookupHandler(w http.ResponseWriter, r *http.Request) {
 		winProbability, _ := strconv.ParseInt(opp.WinProbability, 10, 64)
 
 		// add opportunity to LookupOpportunity staging table
-		_, err = insertStmt.Exec(i+1, opp.OppID, opp.OppName, opp.OppOwner, arr*1000, opp.CloseDate, winProbability,
-			tcv*1000, opp.IntegrationID, opp.RegistryID, opp.CimID, opp.OppStatus, opp.CustomerName, opp.TerritoryOwner)
-		if err != nil {
-			w.WriteHeader(500)
-			fmt.Fprintf(w, "Error updating opportunities")
-			fmt.Printf("[%s] [%s] postOpportunityLookupHandler: Unable to insert opportunity %s into LookupOpportunity: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, opp.OppID, err.Error())
-			return
+		// only put opportunities in 'Open' or 'Won' state into the lookup table
+		if opp.OppStatus == "Open" || opp.OppStatus == "Won" {
+			_, err = insertStmt.Exec(i+1, opp.OppID, opp.OppName, opp.OppOwner, arr*1000, opp.CloseDate, winProbability,
+				tcv*1000, opp.IntegrationID, opp.RegistryID, opp.CimID, opp.OppStatus, opp.CustomerName, opp.TerritoryOwner)
+			if err != nil {
+				w.WriteHeader(500)
+				fmt.Fprintf(w, "Error updating opportunities")
+				fmt.Printf("[%s] [%s] postOpportunityLookupHandler: Unable to insert opportunity %s into LookupOpportunity: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, opp.OppID, err.Error())
+				return
+			}
+			insertedOpps++
 		}
 
-		// update existing Opportunity table with any updated data
+		// update existing Opportunity table with any updated data.  We do this regardless of opportunity status since
+		// this will allow us to 'close' previously open opportunities
 		_, err = updateStmt.Exec(opp.OppName, opp.OppOwner, arr*1000, tcv*1000, opp.OppStatus, opp.CloseDate, winProbability, opp.OppID)
 		if err != nil {
 			w.WriteHeader(500)
@@ -136,7 +142,8 @@ func postOpportunityLookupHandler(w http.ResponseWriter, r *http.Request) {
 		// increment the counter & output at regular intervals
 		twentyPercent := int(math.Round(float64(numItems) * 0.2))
 		if i > 0 && i%twentyPercent == 0 {
-			fmt.Printf("[%s] [%s] postOpportunityLookupHandler: Processed %d opportunities\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, i)
+			fmt.Printf("[%s] [%s] postOpportunityLookupHandler: Processed %d opportunities\n",
+				time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, i)
 		}
 		i++
 	}
@@ -150,5 +157,5 @@ func postOpportunityLookupHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("[%s] [%s] postOpportunityLookupHandler: DONE Processing %d opportunities\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, numItems)
+	fmt.Printf("[%s] [%s] postOpportunityLookupHandler: DONE Processing %d opportunities with %d in Open/Won state\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, numItems, insertedOpps)
 }
