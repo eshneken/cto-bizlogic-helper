@@ -46,8 +46,8 @@ func postOpportunityLookupHandler(w http.ResponseWriter, r *http.Request) {
 	schema := SchemaMap[GlobalConfig.ECALOpportunitySyncTarget]
 	if len(schema) < 1 {
 		w.WriteHeader(500)
-		fmt.Fprintf(w, "Query parameter instanceEnvironment ["+GlobalConfig.ECALOpportunitySyncTarget+"] is not valid.")
-		fmt.Println("Query parameter instanceEnvironment [" + GlobalConfig.ECALOpportunitySyncTarget + "] is not valid.")
+		fmt.Fprintf(w, "Config parameter instanceEnvironment ["+GlobalConfig.ECALOpportunitySyncTarget+"] is not valid.")
+		fmt.Println("Config parameter instanceEnvironment [" + GlobalConfig.ECALOpportunitySyncTarget + "] is not valid.")
 		return
 	}
 
@@ -111,8 +111,8 @@ func postOpportunityLookupHandler(w http.ResponseWriter, r *http.Request) {
 	for i, opp := range oppList.Items {
 
 		// convert strings to floats
-		tcv, _ := strconv.ParseInt(opp.TCV, 10, 64)
-		arr, _ := strconv.ParseInt(opp.ARR, 10, 64)
+		tcv, _ := strconv.ParseFloat(opp.TCV, 64)
+		arr, _ := strconv.ParseFloat(opp.ARR, 64)
 		winProbability, _ := strconv.ParseInt(opp.WinProbability, 10, 64)
 
 		// add opportunity to LookupOpportunity staging table
@@ -141,6 +141,9 @@ func postOpportunityLookupHandler(w http.ResponseWriter, r *http.Request) {
 
 		// increment the counter & output at regular intervals
 		twentyPercent := int(math.Round(float64(numItems) * 0.2))
+		if twentyPercent < 1 {
+			twentyPercent = 1
+		}
 		if i > 0 && i%twentyPercent == 0 {
 			fmt.Printf("[%s] [%s] postOpportunityLookupHandler: Processed %d opportunities\n",
 				time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, i)
