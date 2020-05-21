@@ -78,7 +78,7 @@ func processIdentity(filename string) {
 	empList := EmployeeList{}
 	json.NewDecoder(file).Decode(&empList)
 	numItems := len(empList.Items)
-	fmt.Printf("[%s] processIdentity: START Processing %d opportunities\n", time.Now().Format(time.RFC3339), numItems)
+	fmt.Printf("[%s] processIdentity: START Processing %d identities\n", time.Now().Format(time.RFC3339), numItems)
 
 	// start a DB transaction
 	tx, err := DBPool.Begin()

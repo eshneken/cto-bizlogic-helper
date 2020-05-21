@@ -53,6 +53,8 @@ func postReferenceDataHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 		return
 	}
+	fmt.Printf("[%s] postReferenceDataHandler: PAYLOAD SIZE: %d\n",
+		time.Now().Format(time.RFC3339), len(body))
 
 	// write data to filesystem
 	filename := dataType + ".json"
