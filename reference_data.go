@@ -1,0 +1,84 @@
+//  PostReferenceData Handler
+//	CTO Business Logic Helpers
+//	Ed Shnekendorf, 2020, https://github.com/eshneken/cto-bizlogic-helper
+
+package main
+
+import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"time"
+)
+
+//
+// HTTP handler that takes chunks of external reference data, combines into files, and calls the appropriate
+// handler to process
+//
+func postReferenceDataHandler(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	position := query.Get("position")
+	if position != "first" && position != "middle" && position != "last" {
+		w.WriteHeader(500)
+		fmt.Fprintf(w, "Missing or invalid position query string parameter")
+		fmt.Printf("[%s] postReferenceDataHandler: Missing or invalid position parameter: %s\n",
+			time.Now().Format(time.RFC3339), position)
+		return
+	}
+
+	dataType := query.Get("type")
+	if dataType != "identity" && dataType != "opportunity" {
+		w.WriteHeader(500)
+		fmt.Fprintf(w, "Missing or invalid type query string parameter")
+		fmt.Printf("[%s] postReferenceDataHandler: Missing or invalid type parameter: %s\n",
+			time.Now().Format(time.RFC3339), dataType)
+		return
+	}
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		fmt.Printf("[%s] postReferenceDataHandler: Unable to read body: %s\n",
+			time.Now().Format(time.RFC3339), err.Error())
+		fmt.Fprintf(w, "Unable to read body")
+		w.WriteHeader(500)
+		return
+	}
+
+	// write data to filesystem
+	filename := dataType + ".json"
+	if position == "first" {
+		// first position requires opening a new file and writing to it.  if an old file exists it is overwritten
+		err = ioutil.WriteFile(filename, body, 0700)
+		if err != nil {
+			fmt.Printf("[%s] [%s] postReferenceDataHandler: Error writing to file in 'first' position: %s\n",
+				time.Now().Format(time.RFC3339), dataType, err.Error())
+			fmt.Fprintf(w, "Processing Error")
+			w.WriteHeader(500)
+		}
+		fmt.Printf("[%s] [%s] postReferenceDataHandler: START Collecting Data\n",
+			time.Now().Format(time.RFC3339), dataType)
+	} else {
+		// all other positions (middle & last) require appending to the existing file
+		file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0700)
+		if err != nil {
+			fmt.Printf("[%s] [%s] postReferenceDataHandler: Error writing to file [%s] in [%s] position: %s\n",
+				time.Now().Format(time.RFC3339), dataType, filename, position, err.Error())
+			fmt.Fprintf(w, "Processing Error")
+			w.WriteHeader(500)
+		}
+		defer file.Close()
+		if _, err := file.Write(body); err != nil {
+			fmt.Printf("[%s] [%s] postReferenceDataHandler: Error writing to file [%s] in [%s] position: %s\n",
+				time.Now().Format(time.RFC3339), dataType, filename, position, err.Error())
+			fmt.Fprintf(w, "Processing Error")
+			w.WriteHeader(500)
+		}
+
+		// in last position we also need to kick off processing
+		if position == "last" {
+			fmt.Printf("[%s] [%s] postReferenceDataHandler: DONE Collecting Data\n",
+				time.Now().Format(time.RFC3339), dataType)
+		}
+	}
+}

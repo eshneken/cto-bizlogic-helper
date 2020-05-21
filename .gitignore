@@ -4,3 +4,4 @@ launch.json
 .vscode/*
 cto-bizlogic-helper
 __debug_bin
+identity.json
