@@ -90,7 +90,7 @@ All endpoints require basic auth username & password except for the health check
 * getSTSManagerDashboardSummary:    http://{{hostname}}/getSTSManagerDashboardSummary?managerEmail={{email_addr}}&instanceEnvironment={{instance-env}} [GET]
 * getIdentities:                    http://{{hostname}}/getIdentities [GET]
 * postIdentities:                   http://{{hostname}}/postIdentities [POST]
-* postOpportunityLookup:            http://{{hostname}}/postOpportunityLookup [POST]
+* postReferenceData:                http://{{hostname}}/postOpportunityLookup?position={{first|middle|last}}&type={{identity|opportunity}} [POST]
 
 In production mode the server should always work with HashiCorp Vault.  In development mode, a --novault argument may be passed
 in on the command line when starting the server to disable checking Vault and reading config values at face value.
