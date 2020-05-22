@@ -21,6 +21,7 @@ const reprocess = "reprocess"
 // data type options
 const identity = "identity"
 const opportunity = "opportunity"
+const account = "account"
 
 //
 // HTTP handler that takes chunks of external reference data, combines into files, and calls the appropriate
@@ -38,7 +39,7 @@ func postReferenceDataHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dataType := query.Get("type")
-	if dataType != identity && dataType != opportunity {
+	if dataType != identity && dataType != opportunity && dataType != account {
 		w.WriteHeader(500)
 		fmt.Fprintf(w, "Missing or invalid type query string parameter")
 		fmt.Printf("[%s] postReferenceDataHandler: Missing or invalid type parameter: %s\n",
