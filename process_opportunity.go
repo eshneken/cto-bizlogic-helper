@@ -9,7 +9,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"math"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -31,11 +31,6 @@ type OpportunityLookup struct {
 	IntegrationID  string `json:"opty_int_id"`
 	RegistryID     string `json:"registry_id"`
 	CimID          string `json:"cim_id"`
-}
-
-// OpportunityLookupList represents an array of OpportunityLookup objcts
-type OpportunityLookupList struct {
-	Items []OpportunityLookup `json:"items"`
 }
 
 //
@@ -60,11 +55,17 @@ func processOpportunity(filename string) {
 	}
 	defer file.Close()
 
+	// seek 10 bytes (chars) to advance past {"items":
+	_, err = file.Seek(10, io.SeekStart)
+	if err != nil {
+		fmt.Printf("[%s] processOpportunity: Error advancing file stream to position 10: %s\n",
+			time.Now().Format(time.RFC3339), err.Error())
+		return
+	}
+
 	// decode full opportunity list from response
-	oppList := OpportunityLookupList{}
-	json.NewDecoder(file).Decode(&oppList)
-	numItems := len(oppList.Items)
-	fmt.Printf("[%s] [%s] processOpportunity: START Processing %d opportunities\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, numItems)
+	decoder := json.NewDecoder(file)
+	fmt.Printf("[%s] [%s] processOpportunity: START Processing opportunities\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget)
 
 	// start a DB transaction
 	tx, err := DBPool.Begin()
@@ -106,9 +107,26 @@ func processOpportunity(filename string) {
 		return
 	}
 
+	// consume the opening array brace
+	_, err = decoder.Token()
+	if err != nil {
+		fmt.Printf("[%s] [%s] processOpportunity: Error decoding opening array token: %s\n",
+			time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		return
+	}
+
 	// iterate each opportunity
 	insertedOpps := 0
-	for i, opp := range oppList.Items {
+	counter := 1
+	for decoder.More() {
+		// decode next record
+		var opp OpportunityLookup
+		err := decoder.Decode(&opp)
+		if err != nil {
+			fmt.Printf("[%s] [%s] processOpportunity: Error decoding person %d: %s\n",
+				time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, counter, err.Error())
+			return
+		}
 
 		// convert strings to floats
 		tcv, _ := strconv.ParseFloat(opp.TCV, 64)
@@ -121,7 +139,7 @@ func processOpportunity(filename string) {
 		// add opportunity to LookupOpportunity staging table
 		// only put opportunities in 'Open' or 'Won' state into the lookup table
 		if opp.OppStatus == "Open" || opp.OppStatus == "Won" {
-			_, err = insertStmt.Exec(i+1, opp.OppID, opp.OppName, opp.OppOwner, arr*1000, opp.CloseDate, winProbability,
+			_, err = insertStmt.Exec(counter, opp.OppID, opp.OppName, opp.OppOwner, arr*1000, opp.CloseDate, winProbability,
 				tcv*1000, opp.IntegrationID, opp.RegistryID, opp.CimID, opp.OppStatus, opp.CustomerName, opp.TerritoryOwner)
 			if err != nil {
 				fmt.Printf("[%s] [%s] processOpportunity: Unable to insert opportunity %s into LookupOpportunity: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, opp.OppID, err.Error())
@@ -138,24 +156,24 @@ func processOpportunity(filename string) {
 			return
 		}
 
-		// increment the counter & output at regular intervals
-		twentyPercent := int(math.Round(float64(numItems) * 0.2))
-		if twentyPercent < 1 {
-			twentyPercent = 1
-		}
-		if i > 0 && i%twentyPercent == 0 {
-			fmt.Printf("[%s] [%s] processOpportunity: Processed %d opportunities\n",
-				time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, i)
-		}
-		i++
+		counter++
+	}
+
+	// consume the closing array brace
+	_, err = decoder.Token()
+	if err != nil {
+		fmt.Printf("[%s] [%s] processIdentity: Error decoding closing array token: %s\n",
+			time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		return
 	}
 
 	// complete the transaction
 	err = tx.Commit()
 	if err != nil {
-		fmt.Printf("[%s] [%s] processOpportunity: Error committing transaction: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		fmt.Printf("[%s] [%s] processOpportunity: Error committing transaction: %s\n", time.Now().Format(time.RFC3339),
+			GlobalConfig.ECALOpportunitySyncTarget, err.Error())
 		return
 	}
 
-	fmt.Printf("[%s] [%s] processOpportunity: DONE Processing %d opportunities with %d in Open/Won state\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, numItems, insertedOpps)
+	fmt.Printf("[%s] [%s] processOpportunity: DONE Processing %d opportunities with %d in Open/Won state\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, counter, insertedOpps)
 }

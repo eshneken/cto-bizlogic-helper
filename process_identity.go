@@ -9,7 +9,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"math"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -61,11 +61,6 @@ type Employee struct {
 	TopMgrSeq            string `json:"top_mgr_seq"`
 }
 
-// EmployeeList represents an array of OpportunityLookup objcts
-type EmployeeList struct {
-	Items []Employee `json:"items"`
-}
-
 func processIdentity(filename string) {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -75,10 +70,17 @@ func processIdentity(filename string) {
 	}
 	defer file.Close()
 
-	empList := EmployeeList{}
-	json.NewDecoder(file).Decode(&empList)
-	numItems := len(empList.Items)
-	fmt.Printf("[%s] processIdentity: START Processing %d identities\n", time.Now().Format(time.RFC3339), numItems)
+	// seek 10 bytes (chars) to advance past {"items":
+	_, err = file.Seek(10, io.SeekStart)
+	if err != nil {
+		fmt.Printf("[%s] processIdentity: Error advancing file stream to position 10: %s\n",
+			time.Now().Format(time.RFC3339), err.Error())
+		return
+	}
+
+	// create a JSON stream decoder
+	decoder := json.NewDecoder(file)
+	fmt.Printf("[%s] processIdentity: START Processing identities\n", time.Now().Format(time.RFC3339))
 
 	// start a DB transaction
 	tx, err := DBPool.Begin()
@@ -157,9 +159,26 @@ func processIdentity(filename string) {
 		return
 	}
 
+	// consume the opening array brace
+	_, err = decoder.Token()
+	if err != nil {
+		fmt.Printf("[%s] processIdentity: Error decoding opening array token: %s\n",
+			time.Now().Format(time.RFC3339), err.Error())
+		return
+	}
+
 	// iterate each employee
 	insertedEmps := 0
-	for i, person := range empList.Items {
+	counter := 1
+	for decoder.More() {
+		var person Employee
+		err := decoder.Decode(&person)
+		if err != nil {
+			fmt.Printf("[%s] processIdentity: Error decoding person %d: %s\n",
+				time.Now().Format(time.RFC3339), counter, err.Error())
+			return
+		}
+		counter++
 
 		// truncate timestamps
 		person.StartDate = strings.TrimSuffix(strings.Split(person.StartDate, "T")[0], "T")
@@ -185,17 +204,14 @@ func processIdentity(filename string) {
 			}
 			insertedEmps++
 		}
+	}
 
-		// increment the counter & output at regular intervals
-		twentyPercent := int(math.Round(float64(numItems) * 0.2))
-		if twentyPercent < 1 {
-			twentyPercent = 1
-		}
-		if i > 0 && i%twentyPercent == 0 {
-			fmt.Printf("[%s] processIdentity: Processed %d employees\n",
-				time.Now().Format(time.RFC3339), i)
-		}
-		i++
+	// consume the closing array brace
+	_, err = decoder.Token()
+	if err != nil {
+		fmt.Printf("[%s] processIdentity: Error decoding closing array token: %s\n",
+			time.Now().Format(time.RFC3339), err.Error())
+		return
 	}
 
 	// complete the transaction
@@ -206,6 +222,6 @@ func processIdentity(filename string) {
 		return
 	}
 
-	fmt.Printf("[%s] processIdentity: DONE loading %d current employees\n",
-		time.Now().Format(time.RFC3339), insertedEmps)
+	fmt.Printf("[%s] processIdentity: DONE processing %d employees and loading %d current employees\n",
+		time.Now().Format(time.RFC3339), counter, insertedEmps)
 }

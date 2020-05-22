@@ -16,6 +16,7 @@ import (
 const first = "first"
 const middle = "middle"
 const last = "last"
+const reprocess = "reprocess"
 
 // data type options
 const identity = "identity"
@@ -28,7 +29,7 @@ const opportunity = "opportunity"
 func postReferenceDataHandler(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	position := query.Get("position")
-	if position != first && position != middle && position != last {
+	if position != first && position != middle && position != last && position != reprocess {
 		w.WriteHeader(500)
 		fmt.Fprintf(w, "Missing or invalid position query string parameter")
 		fmt.Printf("[%s] postReferenceDataHandler: Missing or invalid position parameter: %s\n",
@@ -70,26 +71,29 @@ func postReferenceDataHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("[%s] [%s] postReferenceDataHandler: START Collecting Data\n",
 			time.Now().Format(time.RFC3339), dataType)
 	} else {
-		// all other positions (middle & last) require appending to the existing file
-		file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0700)
-		if err != nil {
-			fmt.Printf("[%s] [%s] postReferenceDataHandler: Error writing to file [%s] in [%s] position: %s\n",
-				time.Now().Format(time.RFC3339), dataType, filename, position, err.Error())
-			fmt.Fprintf(w, "Processing Error")
-			w.WriteHeader(500)
-		}
+		// all other normative positions (middle & last) require appending to the existing file
+		// we don't do this when reprocessing; we assume a complete file is already on disk
+		if position == middle || position == last {
+			file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0700)
+			if err != nil {
+				fmt.Printf("[%s] [%s] postReferenceDataHandler: Error writing to file [%s] in [%s] position: %s\n",
+					time.Now().Format(time.RFC3339), dataType, filename, position, err.Error())
+				fmt.Fprintf(w, "Processing Error")
+				w.WriteHeader(500)
+			}
 
-		if _, err := file.Write(body); err != nil {
+			if _, err := file.Write(body); err != nil {
+				file.Close()
+				fmt.Printf("[%s] [%s] postReferenceDataHandler: Error writing to file [%s] in [%s] position: %s\n",
+					time.Now().Format(time.RFC3339), dataType, filename, position, err.Error())
+				fmt.Fprintf(w, "Processing Error")
+				w.WriteHeader(500)
+			}
 			file.Close()
-			fmt.Printf("[%s] [%s] postReferenceDataHandler: Error writing to file [%s] in [%s] position: %s\n",
-				time.Now().Format(time.RFC3339), dataType, filename, position, err.Error())
-			fmt.Fprintf(w, "Processing Error")
-			w.WriteHeader(500)
 		}
-		file.Close()
 
-		// in last position we also need to kick off processing
-		if position == last {
+		// in last position we need to kick off processing.  same applies to reprocessing.
+		if position == last || position == reprocess {
 			fmt.Printf("[%s] [%s] postReferenceDataHandler: DONE Collecting Data\n",
 				time.Now().Format(time.RFC3339), dataType)
 
