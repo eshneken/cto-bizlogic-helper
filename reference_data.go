@@ -111,6 +111,13 @@ func postReferenceDataHandler(w http.ResponseWriter, r *http.Request) {
 					time.Now().Format(time.RFC3339), dataType)
 				go processOpportunity(filename)
 			}
+
+			// process account data in separate goroutine
+			if dataType == account {
+				fmt.Printf("[%s] [%s] postReferenceDataHandler: Handing off to account processor\n",
+					time.Now().Format(time.RFC3339), dataType)
+				go processAccount(filename)
+			}
 		}
 	}
 }

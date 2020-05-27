@@ -34,7 +34,7 @@ type OpportunityLookup struct {
 }
 
 //
-// HTTP handler that writes the contents of the identities file to the output
+// Process opportunities from JSON file to LookupOpportunity table
 //
 func processOpportunity(filename string) {
 
