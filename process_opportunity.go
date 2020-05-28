@@ -27,7 +27,7 @@ type OpportunityLookup struct {
 	CustomerName   string `json:"customer_name"`
 	ARR            string `json:"pipeline_k"`
 	TCV            string `json:"tcv_k"`
-	WinProbability string `json:"win_probabilty"`
+	WinProbability string `json:"win_probability"`
 	IntegrationID  string `json:"opty_int_id"`
 	RegistryID     string `json:"registry_id"`
 	CimID          string `json:"cim_id"`
