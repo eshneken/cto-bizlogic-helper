@@ -30,6 +30,7 @@ type Config struct {
 	ServicePassword           string
 	DBConnectString           string
 	IdentityFilename          string
+	IdentityMgrLeads          string
 	InstanceEnvironments      string
 	SchemaNames               string
 	ECALOpportunitySyncTarget string
@@ -45,6 +46,9 @@ var DBPool *sql.DB
 
 // SchemaMap maps the instance-environment key (e.g. dev-stage, prod-live, etc) to the ATP schema name
 var SchemaMap map[string]string
+
+// IdentityMgrLeads contains the top level managers who should be included in the list of employees loaded into the platform
+var IdentityMgrLeads []string
 
 func main() {
 	println("CTO-Bizlogic-Helper says w00t!")
@@ -161,6 +165,9 @@ func loadConfig(filename string, skipVault bool) Config {
 	if err != nil {
 		panic("marshalling to struct: " + err.Error())
 	}
+
+	// Convert identity manager leads into an array of strings
+	IdentityMgrLeads = strings.Split(config.IdentityMgrLeads, ",")
 
 	// if vault integration is off, return the config struct as-is.  no need for further decoding.
 	if skipVault == true {

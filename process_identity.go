@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -167,7 +168,11 @@ func processIdentity(filename string) {
 		return
 	}
 
+	// initialize identityString
+	identityString := "{\"items\":["
+
 	// iterate each employee
+	includedEmps := 0
 	insertedEmps := 0
 	counter := 1
 	for decoder.More() {
@@ -188,7 +193,8 @@ func processIdentity(filename string) {
 		person.LeftCompanyOn = strings.TrimSuffix(strings.Split(person.LeftCompanyOn, "T")[0], "T")
 		person.Inactive = strings.TrimSuffix(strings.Split(person.Inactive, "T")[0], "T")
 
-		if person.Lob != "X-LEFT ORACLE" {
+		// insert person into table if they have not left Oracle and output record to write to legacy identity file
+		if person.Lob != "X-LEFT ORACLE" && person.Lob != "P-LEFT ORACLE" {
 			_, err = insertStmt.Exec(person.ID, person.EmployeeEmailAddress, person.Role, person.Status, person.RecordType,
 				person.Title, person.Mgr, person.Lob, person.CostCenter, person.Region, person.Country, person.StartDate,
 				person.EndDate, person.CreatedOn, person.CreatedBy, person.UpdatedOn, person.UpdatedBy, person.EmployeeFullName,
@@ -202,6 +208,24 @@ func processIdentity(filename string) {
 					time.Now().Format(time.RFC3339), person.EmployeeFullName, err.Error())
 				return
 			}
+
+			// check to see if this person is part of the management chain of one of the top level managers
+			// who are utilizing the CTO platform.  If they are, we write them to the identity file since they
+			// will be included in the identity synchronization.
+			if includeUserInPlatform(person.MgrChain) {
+				nameSplit := strings.SplitAfterN(person.EmployeeFullName, " ", 2)
+				identityString = identityString +
+					"{\"id\":\"" + person.EmployeeEmailAddress +
+					"\",\"sn\":\"" + strings.TrimRight(nameSplit[1], " ") +
+					"\",\"manager\":\"" + convertEmailToDN(person.Mgr) +
+					"\",\"mail\":\"" + person.EmployeeEmailAddress +
+					"\",\"givenname\":\"" + strings.TrimRight(nameSplit[0], " ") +
+					"\",\"displayname\":\"" + person.EmployeeFullName +
+					"\",\"uid1\":\"" + strings.ToLower(person.OracleUID) +
+					"\",\"num_directs\":" + person.NumDirects + "},"
+				includedEmps++
+			}
+
 			insertedEmps++
 		}
 	}
@@ -222,6 +246,49 @@ func processIdentity(filename string) {
 		return
 	}
 
-	fmt.Printf("[%s] processIdentity: DONE processing %d employees and loading %d current employees\n",
-		time.Now().Format(time.RFC3339), counter, insertedEmps)
+	// write identities.json file to the filesystem
+	identityString = identityString[0:len(identityString)-1] + "]}"
+	err = ioutil.WriteFile(GlobalConfig.IdentityFilename, []byte(identityString), 0700)
+	if err != nil {
+		fmt.Printf("[%s] processIdentity: Error writing [%s] to filesystem: %s\n",
+			time.Now().Format(time.RFC3339), GlobalConfig.IdentityFilename, err.Error())
+	}
+
+	fmt.Printf("[%s] processIdentity: DONE processing %d employees, loading %d current employees and writing %d employees to %s\n",
+		time.Now().Format(time.RFC3339), counter, insertedEmps, includedEmps, GlobalConfig.IdentityFilename)
+}
+
+//
+// Convert to LDAP DN of form (cn=FIRST_NAME,l=amer,dc=oracle,dc=com) from an email of form first.name@oracle.com
+//
+func convertEmailToDN(email string) string {
+	if len(email) < 1 {
+		return ""
+	}
+
+	components := strings.Split(email, "@")
+	if len(components) < 1 {
+		return ""
+	}
+
+	dn := "cn=" + strings.ToUpper(strings.ReplaceAll(components[0], ".", "_"))
+	dn = dn + ",l=amer,dc=oracle,dc=com"
+	return dn
+}
+
+// Takes a mgrChain in the form of email1@oracle.com // email2@oracle.com // email3@oracle.com and iterates through
+// the list of IdentityMgrLeads to see if there is a match.  Returns true if the employee whose manager chain has been
+// passed in contains one of the managers we have tagged as being part of this app
+func includeUserInPlatform(mgrChain string) bool {
+	if len(mgrChain) < 1 {
+		return false
+	}
+
+	for _, manager := range IdentityMgrLeads {
+		if strings.Contains(mgrChain, manager) {
+			return true
+		}
+	}
+
+	return false
 }
