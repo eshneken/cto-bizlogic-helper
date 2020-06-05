@@ -13,6 +13,7 @@ The app requires a file named *config.json* to be present the same directory fro
     "ServicePassword": "{{basic_auth_password_for_this_service}}",
     "DBConnectString": "admin/{{password}}@{{DB SID}}",
     "IdentityFilename": "identities.json",
+    "IdentityMgrLeads": "mgr.1@email.com,mgr.2@email.com",
     "InstanceEnvironments": "ecal-dev-preview,ecal-dev-stage,sts-dev-preview,sts-dev-stage",
     "ECALOpportunitySyncTarget": "ecal-dev-preview",
     "SchemaNames": "{{dev-preview schema name}},{dev-stage schema name}},{prod-stage schema name}},{prod-live schema name}}",
