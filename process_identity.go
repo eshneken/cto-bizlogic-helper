@@ -198,6 +198,12 @@ func processIdentity(filename string) {
 		person.LeftCompanyOn = strings.TrimSuffix(strings.Split(person.LeftCompanyOn, "T")[0], "T")
 		person.Inactive = strings.TrimSuffix(strings.Split(person.Inactive, "T")[0], "T")
 
+		// if the lobtagparent is null this means the lob tag is a root element.  However per analytic
+		// requirements we set parent = tag
+		if len(person.LobTagParent) < 1 {
+			person.LobTagParent = person.LobTag
+		}
+
 		// insert person into table if they have not left Oracle and output record to write to legacy identity file
 		if person.Lob != "X-LEFT ORACLE" && person.Lob != "P-LEFT ORACLE" {
 			_, err = insertStmt.Exec(person.ID, person.EmployeeEmailAddress, person.Role, person.Status, person.RecordType,
