@@ -60,6 +60,8 @@ type Employee struct {
 	LobDetail            string `json:"lob_detail"`
 	HierLevel            string `json:"hier_level"`
 	TopMgrSeq            string `json:"top_mgr_seq"`
+	LobTag               string `json:"lob_tag"`
+	LobTagParent         string `json:"lob_tag_parent"`
 }
 
 func processIdentity(filename string) {
@@ -143,13 +145,16 @@ func processIdentity(filename string) {
 		ORACLE_UID, 
 		LOB_DETAIL, 
 		HIER_LEVEL, 
-		TOP_MGR_SEQ 
+		TOP_MGR_SEQ,
+		LOB_TAG,
+		LOB_TAG_PARENT 
 	) VALUES (
 		TO_NUMBER(:1), :2, :3, :4, :5,:6, :7, :8, :9, :10, :11, TO_DATE(:12, 'YYYY-MM-DD'), 
 		TO_DATE(:13, 'YYYY-MM-DD'), TO_DATE(:14, 'YYYY-MM-DD'), :15, 
 		TO_DATE(:16, 'YYYY-MM-DD'), :17, :18, :19, :20, :21, :22, :23, :24, 
 		TO_DATE(:25, 'YYYY-MM-DD'), TO_DATE(:26, 'YYYY-MM-DD'), :27, :28, 
-		:29, :30, :31, :32, :33, :34, TO_NUMBER(:35), TO_NUMBER(:36), :37, TO_NUMBER(:38), :39, :40, TO_NUMBER(:41), TO_NUMBER(:42)
+		:29, :30, :31, :32, :33, :34, TO_NUMBER(:35), TO_NUMBER(:36), :37, TO_NUMBER(:38), :39, :40, TO_NUMBER(:41), TO_NUMBER(:42),
+		:43,:44
 	)
 	`
 	insertStmt, err := tx.Prepare(query)
@@ -202,7 +207,7 @@ func processIdentity(filename string) {
 				person.LockRegion, person.LeftCompanyOn, person.Inactive, person.MgrLevel, person.State, person.City,
 				person.MgrChain, person.TopMgrDirMinus1, person.TopMgrDirMinus2, person.TopMgrDirMinus3, person.TopMgrDirMinus4,
 				person.NumDirects, person.NumUsers, person.OldUID, person.ChainLevel, person.OracleUID, person.LobDetail,
-				person.HierLevel, person.TopMgrSeq)
+				person.HierLevel, person.TopMgrSeq, person.LobTag, person.LobTagParent)
 			if err != nil {
 				fmt.Printf("[%s] processIdentity: Error inserting person [%s]: %s\n",
 					time.Now().Format(time.RFC3339), person.EmployeeFullName, err.Error())
