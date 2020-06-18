@@ -5,9 +5,6 @@ The app requires a file named *config.json* to be present the same directory fro
 
 ```json
 {
-    "VaultAddress": "http://127.0.0.1:8200",
-    "VaultCli": "/home/opc/vault",
-    "VaultRole": "cto-secret-reader",
     "ServiceListenPort": "{{HTTP listen port for this instance}}",
     "ServiceUsername": "{{basic_auth_username_for_this_service}}",
     "ServicePassword": "{{basic_auth_password_for_this_service}}",
@@ -21,6 +18,17 @@ The app requires a file named *config.json* to be present the same directory fro
     "STSManagerHierarchyQuery": "SELECT UserEmail FROM %SCHEMA%.STSUser u INNER JOIN %SCHEMA%.STSRole r ON u.rolename = r.id WHERE r.rolename = 'Manager' START WITH useremail = :1 CONNECT BY PRIOR useremail = manager"    
 }
 ```
+```
+When used with the OCI Secrets Service the format of any vaulted credentials must be in the form of:  
+```
+[vault]FieldName:SecretOCID
+```
+
+For example:
+``` 
+"DBConnectString": "[vault]DBConnectString:ocid1.vaultsecret.oc1.iad.amaaaaaabxdvnfaaojh62dolelcp4xk93xrms6jfagdec2p3slzs7fx2iicq"
+```
+
 Note that an instance of this service must run in each compartment (e.g. one instance for the DEV compartment and one for PROD).  The InstanceEnvironments example shown above is for the DEV compartment, the PROD compartment whould have a different set of tokens.
 
 This utility runs as an http server on a compute instance.  It listens, by default, on port 80 and requires the appropriate linux and cloud firewall/security list rules to allow incoming traffic to be created.  
@@ -43,9 +51,9 @@ The following steps can be followed to build this service on Oracle Cloud Infras
 1. Download gjson dependency package 
     1. go get -u github.com/tidwall/gjson
 1. Download godror dependency package 
-    1. go get github.com/godror/godror
-1. Download vault dependency package
-    1. go get github.com/hashicorp/vault
+    1. go get -u github.com/godror/godror
+1. Download OCI golang sdk dependency package
+    1. go get -u github.com/oracle/oci-go-sdk
 1. Upload the ATP wallet file to the instance, copy to ~/wallet, and unzip the contents into that folder
     1. scp wallet.zip opc@{{ip_addr}}:/home/opc; [LOCAL]
     1. mkdir wallet; cd wallet; unzip ../wallet.zip; cd ..; rm wallet.zip

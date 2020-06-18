@@ -5,26 +5,26 @@
 package main
 
 import (
+	"context"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
-	"os/exec"
 	"reflect"
 	"strings"
 
 	_ "github.com/godror/godror"
-	"github.com/hashicorp/vault/api"
+	"github.com/oracle/oci-go-sdk/common"
+	"github.com/oracle/oci-go-sdk/common/auth"
+	"github.com/oracle/oci-go-sdk/secrets"
 )
 
 // Config holds all config data loaded from local config.json file
 type Config struct {
-	VaultAddress              string
-	VaultCli                  string
-	VaultRole                 string
 	ServiceListenPort         string
 	ServiceUsername           string
 	ServicePassword           string
@@ -59,7 +59,7 @@ func main() {
 	if len(os.Args) > 1 {
 		if os.Args[1] == "--novault" {
 			skipVault = true
-			println("Running in LOCAL mode with NO HashiCorp Vault integration.")
+			println("Running in LOCAL mode with NO OCI Secrets Service integration.")
 		}
 	}
 
@@ -145,7 +145,7 @@ func basicAuth(pass handler) handler {
 }
 
 //
-//  Read the config.json file and parse configuration data into a struct. Communicate with the HashiCorp Vault server
+//  Read the config.json file and parse configuration data into a struct. Communicate with the OCI Secrets Service
 //  to retrieve the secret data.  If the environment is secure and vault is not needed, that section can be skipped by
 //  passing skipVault=true.  On error, panic here.
 //
@@ -174,34 +174,31 @@ func loadConfig(filename string, skipVault bool) Config {
 		return config
 	}
 
-	// connect to HashiCorp Vault
-	vaultConfig := &api.Config{Address: config.VaultAddress}
-	hashiClient, err := api.NewClient(vaultConfig)
+	// connect to the OCI Secrets Service
+	var provider common.ConfigurationProvider
+	provider, err = auth.InstancePrincipalConfigurationProvider()
 	if err != nil {
-		panic("connecting to Vault[" + config.VaultAddress + "]: " + err.Error())
+		provider = common.DefaultConfigProvider()
 	}
 
-	// get Vault token
-	vaultToken, err := getVaultToken(config)
+	client, err := secrets.NewSecretsClientWithConfigurationProvider(provider)
 	if err != nil {
-		panic("authenticating & getting token: " + err.Error())
+		panic("connecting to OCI Secrets Service: " + err.Error())
 	}
-	hashiClient.SetToken(vaultToken)
 
-	// step through all the struc values and scan for [vault] prefix
-	// which indicates that the value needs to be retrieved from a HashiCorp
-	// vault server
+	// step through all the struct values and scan for [vault] prefix
+	// which indicates that the value needs to be retrieved from the OCI Secret Service
+	// format is [vault]FieldName:OCID
 	v := reflect.ValueOf(config)
 	values := make([]interface{}, v.NumField())
 	for i := 0; i < v.NumField(); i++ {
 		values[i] = v.Field(i).Interface()
 		if strings.HasPrefix(values[i].(string), "[vault]") {
-			vaultKey := strings.TrimPrefix(values[i].(string), "[vault]")
-			vaultValue, err := hashiClient.Logical().Read("cto/" + vaultKey)
-			if vaultValue == nil || err != nil {
-				panic("reading value for key [" + vaultKey + "]: " + err.Error())
-			}
-			reflect.ValueOf(&config).Elem().FieldByName(vaultKey).SetString(vaultValue.Data["value"].(string))
+			keySlice := strings.Split(strings.TrimPrefix(values[i].(string), "[vault]"), ":")
+			fieldName := keySlice[0]
+			vaultKey := keySlice[1]
+			vaultValue := getSecretValue(client, vaultKey)
+			reflect.ValueOf(&config).Elem().FieldByName(fieldName).SetString(vaultValue)
 		}
 	}
 
@@ -209,30 +206,23 @@ func loadConfig(filename string, skipVault bool) Config {
 }
 
 //
-// getVaultToken authenticates against HashiCorp Vault using OCI instance principal credentials, scans the output
-// and returns the session token to be used by the Hashi client.
+// Returns a secret value from the OCI Secret Service based on a secret OCID
 //
-func getVaultToken(config Config) (string, error) {
-	// authenticate against Vault using instance principal credentials
-	stdout, err := exec.Command(config.VaultCli, "login", "-address="+config.VaultAddress,
-		"-method=oci", "auth_type=instance", "role="+config.VaultRole).Output()
+func getSecretValue(client secrets.SecretsClient, secretOCID string) string {
+	request := secrets.GetSecretBundleRequest{SecretId: &secretOCID}
+	response, err := client.GetSecretBundle(context.Background(), request)
 	if err != nil {
-		return "", err
+		panic("reading value for key [" + secretOCID + "]: " + err.Error())
 	}
 
-	// scan through the vault cli output and scan for the standalone token line
-	// not that the HasPrefix method includes a space in the pattern after token
-	// to get the correct value
-	token := ""
-	output := strings.Split(string(stdout), "\n")
-	for _, line := range output {
-		if strings.HasPrefix(line, "token ") {
-			fields := strings.Fields(line)
-			token = fields[1]
-		}
+	encodedResponse := fmt.Sprintf("%s", response.SecretBundleContent)
+	encodedResponse = strings.TrimRight(strings.TrimLeft(encodedResponse, "{ Content="), " }")
+	decodedByteArray, err := base64.StdEncoding.DecodeString(encodedResponse)
+	if err != nil {
+		panic("decoding value for key [" + secretOCID + "]: " + err.Error())
 	}
 
-	return token, nil
+	return string(decodedByteArray)
 }
 
 //
