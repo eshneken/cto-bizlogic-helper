@@ -169,17 +169,17 @@ func collapseBusinessSegment(businessSegment string) string {
 	if businessSegment == "NAC HQ" {
 		return paygo
 	}
-	if strings.Contains(businessSegment, "NAC Key Accounts") {
-		return "NAC Key Account"
+	if strings.Contains(businessSegment, "Key Accounts") {
+		return "Key Account"
 	}
-	if strings.Contains(businessSegment, "NAC Enterprise") {
-		return "NAC Enterprise"
+	if strings.Contains(businessSegment, "Enterprise") {
+		return "Enterprise"
 	}
-	if strings.Contains(businessSegment, "NAC Midmarket") {
-		return "NAC Mid-Market"
+	if strings.Contains(businessSegment, "Midmarket") {
+		return "Mid-Market"
 	}
-	if strings.Contains(businessSegment, "NAC SMB") {
-		return "NAC SMB"
+	if strings.Contains(businessSegment, "SMB") {
+		return "SMB"
 	}
 	if strings.Contains(businessSegment, "ISV") {
 		return "ISV"
