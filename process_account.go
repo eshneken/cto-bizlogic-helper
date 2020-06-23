@@ -181,11 +181,11 @@ func collapseBusinessSegment(businessSegment string) string {
 	if strings.Contains(businessSegment, "NAC SMB") {
 		return "NAC SMB"
 	}
-	if strings.Contains(businessSegment, "NATD ISV") {
-		return "NATD ISV"
+	if strings.Contains(businessSegment, "ISV") {
+		return "ISV"
 	}
-	if strings.Contains(businessSegment, "NATD Public Sector") {
-		return "NATD Public Sector"
+	if strings.Contains(businessSegment, "Public Sector") {
+		return "Public Sector"
 	}
 	return ""
 
