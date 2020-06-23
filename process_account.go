@@ -160,7 +160,7 @@ func processAccount(filename string) {
 // 	NATD ISV:NATD Public Sector
 // 	NAC HQ:NAC SMB Cloud:NATD Public Sector
 // 	NAC Midmarket Cloud:NATD Public Sector:NATD ULA License
-// We will collapse these for our purposes into NAC Key Account, NAC Enterprise, NAC Mid-Market, etc
+// We will collapse these for our purposes into Key Account, Enterprise, Mid-Market, etc
 // in that descending order of priority.  This means that there will be only a single business segment
 // recorded per account.  If nothing matches our pick list then return an empty string.
 // A special case is accounts marked NAC HQ.  These are paygos and we will ignore them in loading the DB
