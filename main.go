@@ -53,7 +53,7 @@ var IdentityMgrLeads []string
 func main() {
 	println("CTO-Bizlogic-Helper says w00t!")
 
-	// check to see if we should skip config decoding w/ HashiCorp Vault by looking for the --novault flag
+	// check to see if we should skip config decoding w/ OCI Secrets Service by looking for the --novault flag
 	// use this for local testing where unencrypted config files are used
 	skipVault := false
 	if len(os.Args) > 1 {
