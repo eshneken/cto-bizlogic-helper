@@ -25,11 +25,11 @@ type OpportunityLookup struct {
 	OppStatus             string `json:"opportunity_status"`
 	CloseDate             string `json:"close_date"`
 	CustomerName          string `json:"customer_name"`
-	WinProbability        string `json:"win_probability"`
+	WinProbability        string `json:"opp_probability"`
 	IntegrationID         string `json:"opty_int_id"`
 	RegistryID            string `json:"registry_id"`
 	CimID                 string `json:"cim_id"`
-	OpportunityValue      string `json:"opportunity_value"`
+	OpportunityValue      string `json:"oppty_amount_k"`
 	ForecastTypeGroup     string `json:"forecast_type_group"`
 	RevenueLineID         string `json:"revenue_line_id"`
 	RevenueType           string `json:"revenue_type"`
@@ -45,11 +45,13 @@ type OpportunityLookup struct {
 	ProductGroup          string `json:"product_group"`
 	ProductName           string `json:"product_name"`
 	ProductDescription    string `json:"product_description"`
-	WorkloadAmount        string `json:"workload_amt"`
+	WorkloadAmount        string `json:"opp_total_workload_k"`
 	ConsumptionStartDate  string `json:"consumption_start_date"`
 	ConsumptionRampMonths string `json:"cons_ramp_months"`
 	L2TerritoryName       string `json:"level_2_territory_name"`
 	L3TerritoryName       string `json:"level_3_territory_name"`
+	L2TerritoryEmail      string `json:"level_2_territory_owner_email"`
+	L3TerritoryEmail      string `json:"level_3_territory_owner_email"`
 }
 
 //
@@ -108,14 +110,14 @@ func processOpportunity(filename string) {
 		"projectedtcv, integrationid, registryid, cimid, opportunitystatus, customername, territoryowner," +
 		"opportunityvalue, forecasttypegroup, revenuelineid, revenuetype, revenuetypegroup, revenuelinestatus, revenuesalesstage," +
 		"revenuepipelinek, revenuetcvk, revenueprobability, productclass, productpillar, productline, productgroup," +
-		"productname, productdescription, workloadamount, consumptionstartdate, consumptionrampmonths, l2territoryname, l3territoryname" +
+		"productname, productdescription, workloadamount, consumptionstartdate, consumptionrampmonths, l2territoryname, l3territoryname, l2territoryemail, l3territoryemail" +
 		") VALUES ( " +
 		":1, SYSDATE, SYSDATE, 'cto_bizlogic_helper', 'cto_bizlogic_helper', null, " +
 		":2, :3, :4, :5, TO_DATE(:6, 'YYYY-MM-DD'), :7, " +
 		":8, :9, :10, :11, :12, :13, :14, " +
 		":15, :16, :17, :18, :19, :20, :21, " +
 		":22, :23, :24, :25, :26, :27, :28, " +
-		":29, :30, :31, TO_DATE(:32, 'YYYY-MM-DD'), :33, :34, :35)"
+		":29, :30, :31, TO_DATE(:32, 'YYYY-MM-DD'), :33, :34, :35, :36, :37)"
 	insertStmt, err := tx.Prepare(queryString)
 	defer insertStmt.Close()
 	if err != nil {
@@ -184,9 +186,9 @@ func processOpportunity(filename string) {
 			_, err = insertStmt.Exec(
 				counter, opp.OppID, opp.OppName, opp.OppOwner, arr*1000, opp.CloseDate, winProbability,
 				tcv*1000, opp.IntegrationID, opp.RegistryID, opp.CimID, opp.OppStatus, opp.CustomerName, opp.TerritoryOwner,
-				opportunityValue, opp.ForecastTypeGroup, opp.RevenueLineID, opp.RevenueType, opp.RevenueTypeGroup, opp.RevenueLineStatus, opp.RevenueProbability,
+				opportunityValue*1000, opp.ForecastTypeGroup, opp.RevenueLineID, opp.RevenueType, opp.RevenueTypeGroup, opp.RevenueLineStatus, opp.RevenueProbability,
 				revenuePipelineK*1000, revenueTCVK*1000, workloadProbability, opp.ProductClass, opp.ProductPillar, opp.ProductLine, opp.ProductGroup,
-				opp.ProductName, opp.ProductDescription, workloadAmount, opp.ConsumptionStartDate, consumptionRampMonths, opp.L2TerritoryName, opp.L3TerritoryName)
+				opp.ProductName, opp.ProductDescription, workloadAmount*1000, opp.ConsumptionStartDate, consumptionRampMonths, opp.L2TerritoryName, opp.L3TerritoryName, opp.L2TerritoryEmail, opp.L3TerritoryEmail)
 			if err != nil {
 				fmt.Printf("[%s] [%s] processOpportunity: Unable to insert opportunity %s into LookupOpportunity: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, opp.OppID, err.Error())
 				return
