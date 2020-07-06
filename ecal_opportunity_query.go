@@ -66,6 +66,7 @@ func getECALOpportunityQuery(instanceEnv string, userEmail string, isAdmin bool)
 		a.id AS AccountID, 
 		a.accountname AS AccountName, 
 		o.opportunityid AS OpportunityID,
+		NVL(w.workloadtype, 'None') as WorkloadType,
 		o.summary AS Summary,
 		NVL(o.projectedARR, 0) AS ARR,
 		NVL(o.ecalPercentComplete, 0) AS ECALPercent,
@@ -79,6 +80,7 @@ func getECALOpportunityQuery(instanceEnv string, userEmail string, isAdmin bool)
 	INNER JOIN %SCHEMA%.UserAccount ua ON ua.user1 = u.id
 	INNER JOIN %SCHEMA%.Account a ON a.id = ua.account
 	INNER JOIN %SCHEMA%.Opportunity o ON o.account = a.id
+	LEFT OUTER JOIN %SCHEMA%.OpportunityWorkload w ON w.opportunity = o.id
 	LEFT OUTER JOIN %SCHEMA%.OpportunityTechHealth th ON th.opportunity = o.id
 	LEFT OUTER JOIN %SCHEMA%.ECALStage stg ON stg.id = o.lateststagedone	
 	`
@@ -118,14 +120,14 @@ func getECALOpportunityQuery(instanceEnv string, userEmail string, isAdmin bool)
 	defer rows.Close()
 
 	// vars to hold row results
-	var id, accountID, accountName, opportunityID, summary, arr, ecalPercent, latestECALStage, lastActivity, pocStatus string
+	var id, accountID, accountName, opportunityID, workloadType, summary, arr, ecalPercent, latestECALStage, lastActivity, pocStatus string
 	var commercialBlockers, technicalBlockers, poc int
 
 	// step through each row returned and add to the query filter using the correct format
 	result := ""
 	count := 0
 	for rows.Next() {
-		err := rows.Scan(&id, &accountID, &accountName, &opportunityID, &summary, &arr, &ecalPercent, &latestECALStage, &lastActivity, &poc, &pocStatus, &commercialBlockers, &technicalBlockers)
+		err := rows.Scan(&id, &accountID, &accountName, &opportunityID, &workloadType, &summary, &arr, &ecalPercent, &latestECALStage, &lastActivity, &poc, &pocStatus, &commercialBlockers, &technicalBlockers)
 		if err != nil {
 			thisError := fmt.Sprintf("[%s] [%s] [%s] [%s] getECALOpportunityQuery: Error scanning row: %s", time.Now().Format(time.RFC3339), instanceEnv, userEmail, strconv.FormatBool(isAdmin), err.Error())
 			return "", errors.New(thisError)
@@ -141,8 +143,8 @@ func getECALOpportunityQuery(instanceEnv string, userEmail string, isAdmin bool)
 			pocBool = true
 		}
 
-		result += fmt.Sprintf("{\"ID\": %s, \"AccountID\": %s, \"AccountName\": \"%s\", \"OpportunityID\": \"%s\", \"Summary\": \"%s\", \"ARR\": %s, \"ECALPercent\": %s, \"LatestECALStage\": \"%s\", \"LastActivity\": \"%s\", \"POC\": %t, \"POCStatus\": \"%s\", \"Blockers\": %t},",
-			id, accountID, accountName, opportunityID, summary, arr, ecalPercent, latestECALStage, lastActivity, pocBool, pocStatus, blockers)
+		result += fmt.Sprintf("{\"ID\": %s, \"AccountID\": %s, \"AccountName\": \"%s\", \"OpportunityID\": \"%s\", \"WorkloadType\": \"%s\", \"Summary\": \"%s\", \"ARR\": %s, \"ECALPercent\": %s, \"LatestECALStage\": \"%s\", \"LastActivity\": \"%s\", \"POC\": %t, \"POCStatus\": \"%s\", \"Blockers\": %t},",
+			id, accountID, accountName, opportunityID, workloadType, summary, arr, ecalPercent, latestECALStage, lastActivity, pocBool, pocStatus, blockers)
 		count++
 	}
 
