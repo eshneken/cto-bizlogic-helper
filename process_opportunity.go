@@ -125,14 +125,24 @@ func processOpportunity(filename string) {
 		return
 	}
 
-	// prepare update statement
-	updateStmt, err := tx.Prepare(
+	// prepare update statements for Opportunity & OpportunityWorkload
+	updateStmt1, err := tx.Prepare(
 		"UPDATE " + schema + ".Opportunity SET" +
 			" summary = :1, salesRep = :2, projectedARR = :3, projectedTCV = :4, opportunityStatus = :5, anticipatedCloseDate = TO_DATE(:6, 'YYYY-MM-DD'), " +
 			" winProbability = :7, lastUpdatedBy = 'cto_bizlogic_helper', lastUpdateDate = SYSDATE WHERE opportunityID = :8")
-	defer updateStmt.Close()
+	defer updateStmt1.Close()
 	if err != nil {
-		fmt.Printf("[%s] [%s] processOpportunity: Unable to prepare statement for update: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		fmt.Printf("[%s] [%s] processOpportunity: Unable to prepare statement for Opportunity update: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		return
+	}
+	updateStmt2, err := tx.Prepare(
+		"UPDATE " + schema + ".OpportunityWorkload SET" +
+			" WorkloadDescription = :1, ConsumptionStartDate = TO_DATE(:2, 'YYYY-MM-DD'), ConsumptionRampMonths = :3, WorkloadType = :4, lastUpdatedBy = 'cto_bizlogic_helper', lastUpdateDate = SYSDATE " +
+			" WHERE id = (SELECT w.id FROM " + schema + ".OpportunityWorkload w INNER JOIN " + schema + ".Opportunity o ON o.id = w.opportunity " +
+			" WHERE o.opportunityid = :5 and w.workloadidentifier = :6)")
+	defer updateStmt2.Close()
+	if err != nil {
+		fmt.Printf("[%s] [%s] processOpportunity: Unable to prepare statement for OpportunityWorkload update: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, err.Error())
 		return
 	}
 
@@ -198,9 +208,16 @@ func processOpportunity(filename string) {
 
 		// update existing Opportunity table with any updated data.  We do this regardless of opportunity status since
 		// this will allow us to 'close' previously open opportunities
-		_, err = updateStmt.Exec(opp.OppName, opp.OppOwner, arr*1000, tcv*1000, opp.OppStatus, opp.CloseDate, winProbability, opp.OppID)
+		_, err = updateStmt1.Exec(opp.OppName, opp.OppOwner, arr*1000, tcv*1000, opp.OppStatus, opp.CloseDate, winProbability, opp.OppID)
 		if err != nil {
 			fmt.Printf("[%s] [%s] processOpportunity: Unable to update opportunity %s in Opportunity: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, opp.OppID, err.Error())
+			return
+		}
+		// update existing OpportunityWorkload table with any updated data.  We do this regardless of opportunity status since
+		// this will allow us to 'close' previously open opportunities
+		_, err = updateStmt2.Exec(opp.ProductDescription, opp.ConsumptionStartDate, consumptionRampMonths, opp.ProductGroup, opp.OppID, opp.RevenueLineID)
+		if err != nil {
+			fmt.Printf("[%s] [%s] processOpportunity: Unable to update opportunity %s in OpportunityWorkload: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, opp.OppID, err.Error())
 			return
 		}
 
