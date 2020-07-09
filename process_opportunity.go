@@ -208,7 +208,7 @@ func processOpportunity(filename string) {
 
 		// update existing Opportunity table with any updated data.  We do this regardless of opportunity status since
 		// this will allow us to 'close' previously open opportunities
-		_, err = updateStmt1.Exec(opp.OppName, opp.OppOwner, arr*1000, tcv*1000, opp.OppStatus, opp.CloseDate, winProbability, opp.OppID)
+		_, err = updateStmt1.Exec(opp.OppName, opp.OppOwner, revenuePipelineK*1000, opportunityValue*1000, opp.OppStatus, opp.CloseDate, winProbability, opp.OppID)
 		if err != nil {
 			fmt.Printf("[%s] [%s] processOpportunity: Unable to update opportunity %s in Opportunity: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, opp.OppID, err.Error())
 			return
