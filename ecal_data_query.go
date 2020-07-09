@@ -106,7 +106,7 @@ func getECALDataQuery(instanceEnv string) (string, error) {
 			nvl(th.cloudatcustomersardone,0) as cc_done,
 			nvl(th.technicalblockers, 0) as tech_blockers,
 			nvl(th.commercialblockers, 0) as commercial_blockers,
-			th.coronavirusimpact as covid_impact,
+			nvl(th.coronavirusimpact, 0) as covid_impact,
 			nvl(th.oracleconsultingengaged, 0) as ocs_engaged,
 			nvl(th.expansion, 0) as expansion,
 			th.technicaldecisionmakern as tech_decider,
