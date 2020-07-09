@@ -129,7 +129,9 @@ func processOpportunity(filename string) {
 	updateStmt1, err := tx.Prepare(
 		"UPDATE " + schema + ".Opportunity SET" +
 			" summary = :1, salesRep = :2, projectedARR = :3, projectedTCV = :4, opportunityStatus = :5, anticipatedCloseDate = TO_DATE(:6, 'YYYY-MM-DD'), " +
-			" winProbability = :7, lastUpdatedBy = 'cto_bizlogic_helper', lastUpdateDate = SYSDATE WHERE opportunityID = :8")
+			" winProbability = :7, lastUpdatedBy = 'cto_bizlogic_helper', lastUpdateDate = SYSDATE " +
+			" WHERE id = (SELECT o.id FROM " + schema + ".OpportunityWorkload w INNER JOIN " + schema + ".Opportunity o ON o.id = w.opportunity " +
+			" WHERE o.opportunityid = :8 and w.workloadidentifier = :9)")
 	defer updateStmt1.Close()
 	if err != nil {
 		fmt.Printf("[%s] [%s] processOpportunity: Unable to prepare statement for Opportunity update: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, err.Error())
@@ -189,6 +191,9 @@ func processOpportunity(filename string) {
 		if workloadProbability == 0 {
 			workloadProbability = winProbability
 		}
+		if len(opp.ProductDescription) < 1 {
+			opp.ProductDescription = "Unspecified"
+		}
 
 		// add opportunity to LookupOpportunity staging table
 		// only put opportunities in 'Open' or 'Won' state into the lookup table
@@ -208,7 +213,7 @@ func processOpportunity(filename string) {
 
 		// update existing Opportunity table with any updated data.  We do this regardless of opportunity status since
 		// this will allow us to 'close' previously open opportunities
-		_, err = updateStmt1.Exec(opp.OppName, opp.OppOwner, revenuePipelineK*1000, opportunityValue*1000, opp.OppStatus, opp.CloseDate, winProbability, opp.OppID)
+		_, err = updateStmt1.Exec(opp.OppName, opp.OppOwner, revenuePipelineK*1000, opportunityValue*1000, opp.OppStatus, opp.CloseDate, winProbability, opp.OppID, opp.RevenueLineID)
 		if err != nil {
 			fmt.Printf("[%s] [%s] processOpportunity: Unable to update opportunity %s in Opportunity: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, opp.OppID, err.Error())
 			return
