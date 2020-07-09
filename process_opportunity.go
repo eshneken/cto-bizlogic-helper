@@ -194,6 +194,7 @@ func processOpportunity(filename string) {
 		if len(opp.ProductDescription) < 1 {
 			opp.ProductDescription = "Unspecified"
 		}
+		opp.OppName = strings.ReplaceAll(opp.OppName, "_", " ")
 
 		// add opportunity to LookupOpportunity staging table
 		// only put opportunities in 'Open' or 'Won' state into the lookup table
