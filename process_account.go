@@ -19,6 +19,7 @@ import (
 type AccountLookup struct {
 	CimID             string `json:"cim_id"`
 	CimParentID       string `json:"cim_id_parent"`
+	CimIDReg          string `json:"cim_id_reg"`
 	AccountName       string `json:"account_name"`
 	BusinessSegment   string `json:"bus_segment_str"`
 	EndUserRegistryID string `json:"end_user_registry_id"`
@@ -85,9 +86,9 @@ func processAccount(filename string) {
 		"INSERT INTO " + schema + ".LookupAccount" +
 			"(id, creationdate, lastupdatedate, createdby, lastupdatedby, abcschangenumber, " +
 			"CimId, CimParentId, AccountName, BusinessSegment, EndUserRegistryId, GlobalRegistryId, " +
-			"RegistryIdList, NacSeTeam, NatSeTeam) " +
+			"RegistryIdList, NacSeTeam, NatSeTeam, CimIDReg " +
 			"VALUES(:1, SYSDATE, SYSDATE, 'cto_bizlogic_helper', 'cto_bizlogic_helper', null, " +
-			":2, :3, :4, :5, :6, :7, :8, :9, :10)")
+			":2, :3, :4, :5, :6, :7, :8, :9, :10, :11)")
 	defer insertStmt.Close()
 	if err != nil {
 		fmt.Printf("[%s] [%s] processAccount: Unable to prepare statement for insert: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, err.Error())
@@ -123,7 +124,8 @@ func processAccount(filename string) {
 		// add account to LookupAccount staging table
 		if account.BusinessSegment != paygo {
 			_, err = insertStmt.Exec(counter, account.CimID, account.CimParentID, account.AccountName, account.BusinessSegment,
-				account.EndUserRegistryID, account.GlobalRegistryID, account.RegistryIDList, account.NacSeTeam, account.NatSeTeam)
+				account.EndUserRegistryID, account.GlobalRegistryID, account.RegistryIDList, account.NacSeTeam, account.NatSeTeam,
+				account.CimIDReg)
 			loaded++
 		}
 		if err != nil {
