@@ -82,13 +82,13 @@ func processAccount(filename string) {
 	}
 
 	// prepare insert statement
-	insertStmt, err := tx.Prepare(
-		"INSERT INTO " + schema + ".LookupAccount" +
-			"(id, creationdate, lastupdatedate, createdby, lastupdatedby, abcschangenumber, " +
-			"CimId, CimParentId, AccountName, BusinessSegment, EndUserRegistryId, GlobalRegistryId, " +
-			"RegistryIdList, NacSeTeam, NatSeTeam, CimIDReg " +
-			"VALUES(:1, SYSDATE, SYSDATE, 'cto_bizlogic_helper', 'cto_bizlogic_helper', null, " +
-			":2, :3, :4, :5, :6, :7, :8, :9, :10, :11)")
+	query := "INSERT INTO " + schema + ".LookupAccount" +
+		"(id, creationdate, lastupdatedate, createdby, lastupdatedby, abcschangenumber, " +
+		"CimId, CimParentId, AccountName, BusinessSegment, EndUserRegistryId, GlobalRegistryId, " +
+		"RegistryIdList, NacSeTeam, NatSeTeam, CimIDReg) " +
+		"VALUES(:1, SYSDATE, SYSDATE, 'cto_bizlogic_helper', 'cto_bizlogic_helper', null, " +
+		":2, :3, :4, :5, :6, :7, :8, :9, :10, :11)"
+	insertStmt, err := tx.Prepare(query)
 	defer insertStmt.Close()
 	if err != nil {
 		fmt.Printf("[%s] [%s] processAccount: Unable to prepare statement for insert: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, err.Error())
