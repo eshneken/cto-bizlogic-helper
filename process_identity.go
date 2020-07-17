@@ -204,8 +204,8 @@ func processIdentity(filename string) {
 			person.LobTagParent = person.LobTag
 		}
 
-		// insert person into table if they have not left Oracle and output record to write to legacy identity file
-		if person.Lob != "X-LEFT ORACLE" && person.Lob != "P-LEFT ORACLE" {
+		// insert person into table if they have not left Oracle and they have a givenname (this last condition to get rid of some dummy accounts)
+		if person.Lob != "X-LEFT ORACLE" && person.Lob != "P-LEFT ORACLE" && person.LobDetail != "/givenname=" {
 			_, err = insertStmt.Exec(person.ID, person.EmployeeEmailAddress, person.Role, person.Status, person.RecordType,
 				person.Title, person.Mgr, person.Lob, person.CostCenter, person.Region, person.Country, person.StartDate,
 				person.EndDate, person.CreatedOn, person.CreatedBy, person.UpdatedOn, person.UpdatedBy, person.EmployeeFullName,
