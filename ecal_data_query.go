@@ -93,8 +93,8 @@ func getECALDataQuery(instanceEnv string) (string, error) {
 			as color,
 			nvl((select stage FROM %SCHEMA%.EcalStage where id = o.lateststagedone), 'None') as latest_ecal_stage_done,
 			nvl(a.currentcsaexecuted, 0) as csa_executed,
-			(select us.FirstName || ' ' || us.LastName FROM %SCHEMA%.User1 us where us.useremail = o.technicallead) as tech_lead,
-			m.FirstName || ' ' || m.LastName as tech_manager,
+			o.technicallead as tech_lead,
+			u.manager as tech_manager,
 			nvl(th.pocrequired, 0) as poc_required,
 			to_char(th.pocenddate, 'MM-DD-YYYY') as poc_enddate,
 			nvl(th.pocstatus, 'Not Started') as poc_status,
@@ -135,17 +135,17 @@ func getECALDataQuery(instanceEnv string) (string, error) {
 			INNER JOIN %SCHEMA%.RequiredArtifacts ra3 ON ora3.requiredartifact = ra3.id
 			where o.id = ora3.opportunity and ra3.name = 'Consumption Plan') as consumption_plan_complete,
 			nvl(os.status, 'No Status Entered') as latest_status,
-			to_char(os.creationdate, 'MM-DD-YYYY') as latest_status_date
+			to_char(os.creationdate, 'MM-DD-YYYY') as latest_status_date,
+			os.lastupdatedby as latest_status_author
 		FROM %SCHEMA%.Opportunity o
 		INNER JOIN %SCHEMA%.Account a ON a.id = o.account
 		LEFT OUTER JOIN %SCHEMA%.OpportunityTechHealth th ON th.opportunity = o.id
 		LEFT OUTER JOIN %SCHEMA%.OpportunityWorkload w ON w.opportunity = o.id
 		LEFT OUTER JOIN %SCHEMA%.User1 u ON o.createdby = u.useremail
-		LEFT OUTER JOIN %SCHEMA%.User1 m ON m.useremail = u.manager
 		LEFT OUTER JOIN %SCHEMA%.OpportunityStatus os ON o.id = os.opportunity
 		and not exists (select 1 FROM %SCHEMA%.OpportunityStatus os1 where os1.opportunity = o.id and os1.creationdate > os.creationdate)`
 
-	var jsonResultTemplate = `{"ecal_workload_id":"%s","ecal_account_id":"%s","opportunity_id":"%s","workload_type":"%s","workload_identifier":"%s","account_name":"%s","cim_id":"%s","workload_summary":"%s","color":"%s","latest_ecal_stage_done": "%s","csa_executed":"%s","tech_lead":"%s","tech_manager":"%s","poc_required":"%s","poc_enddate":"%s","poc_status":"%s","poc_resolution":"%s","security_signoff":"%s","technical_signoff":"%s","cons_plan_signoff": "%s","cc_involved":"%s","cc_done":"%s","tech_blockers":"%s","commercial_blockers":"%s","covid_impact":"%s","ocs_engaged":"%s","expansion":"%s","tech_decider":"%s","tech_signoff_date":"%s","migration_by": "%s","tiger_se_email": "%s","partner_name":"%s","workload_progression":"%s","adopter_email":"%s","adopter_name":"%s","implementer_email":"%s","implementer_name":"%s","future_state_complete":"%s","current_state_complete":"%s","consumption_plan_complete":"%s","latest_status":"%s","latest_status_date":"%s"},`
+	var jsonResultTemplate = `{"ecal_workload_id":"%s","ecal_account_id":"%s","opportunity_id":"%s","workload_type":"%s","workload_identifier":"%s","account_name":"%s","cim_id":"%s","workload_summary":"%s","color":"%s","latest_ecal_stage_done": "%s","csa_executed":"%s","tech_lead":"%s","tech_manager":"%s","poc_required":"%s","poc_enddate":"%s","poc_status":"%s","poc_resolution":"%s","security_signoff":"%s","technical_signoff":"%s","cons_plan_signoff": "%s","cc_involved":"%s","cc_done":"%s","tech_blockers":"%s","commercial_blockers":"%s","covid_impact":"%s","ocs_engaged":"%s","expansion":"%s","tech_decider":"%s","tech_signoff_date":"%s","migration_by": "%s","tiger_se_email": "%s","partner_name":"%s","workload_progression":"%s","adopter_email":"%s","adopter_name":"%s","implementer_email":"%s","implementer_name":"%s","future_state_complete":"%s","current_state_complete":"%s","consumption_plan_complete":"%s","latest_status":"%s","latest_status_date":"%s","latest_status_author":"%s"},`
 
 	// replace the %SCHEMA% template with the correct schema name
 	query := strings.ReplaceAll(template, "%SCHEMA%", SchemaMap[instanceEnv])
@@ -163,7 +163,7 @@ func getECALDataQuery(instanceEnv string) (string, error) {
 	var ecalWorkloadID, ecalAccountID, opportunityID, workloadType, workloadIdentifier, accountName, cimID, workloadSummary, color, latestECALStageDone string
 	var csaExecuted, techLead, techManager, pocRequired, pocEndDate, pocStatus, pocResolution, securitySignoff, technicalSignoff, consPlanSignoff string
 	var ccInvolved, ccDone, techBlockers, commercialBlockers, covidImpact, ocsEngaged, expansion, techDecider, techSignoffDate, migrationBy, tigerSeEmail string
-	var partnerName, workloadProgression, adopterEmail, adopterName, implementerEmail, implementerName, futureStateComplete, currentStateComplete, consumptionPlanComplete, latestStatus, latestStatusDate string
+	var partnerName, workloadProgression, adopterEmail, adopterName, implementerEmail, implementerName, futureStateComplete, currentStateComplete, consumptionPlanComplete, latestStatus, latestStatusDate, latestStatusAuthor string
 
 	// step through each row returned and add to the query filter using the correct format
 	result := ""
@@ -172,7 +172,7 @@ func getECALDataQuery(instanceEnv string) (string, error) {
 		err := rows.Scan(&ecalWorkloadID, &ecalAccountID, &opportunityID, &workloadType, &workloadIdentifier, &accountName, &cimID, &workloadSummary, &color, &latestECALStageDone,
 			&csaExecuted, &techLead, &techManager, &pocRequired, &pocEndDate, &pocStatus, &pocResolution, &securitySignoff, &technicalSignoff, &consPlanSignoff,
 			&ccInvolved, &ccDone, &techBlockers, &commercialBlockers, &covidImpact, &ocsEngaged, &expansion, &techDecider, &techSignoffDate, &migrationBy, &tigerSeEmail,
-			&partnerName, &workloadProgression, &adopterEmail, &adopterName, &implementerEmail, &implementerName, &futureStateComplete, &currentStateComplete, &consumptionPlanComplete, &latestStatus, &latestStatusDate)
+			&partnerName, &workloadProgression, &adopterEmail, &adopterName, &implementerEmail, &implementerName, &futureStateComplete, &currentStateComplete, &consumptionPlanComplete, &latestStatus, &latestStatusDate, &latestStatusAuthor)
 		if err != nil {
 			thisError := fmt.Sprintf("[%s] [%s] getECALOpportunityQuery: Error scanning row: %s", time.Now().Format(time.RFC3339), instanceEnv, err.Error())
 			return "", errors.New(thisError)
@@ -182,7 +182,7 @@ func getECALDataQuery(instanceEnv string) (string, error) {
 			ecalWorkloadID, ecalAccountID, opportunityID, workloadType, workloadIdentifier, accountName, cimID, workloadSummary, color, latestECALStageDone,
 			csaExecuted, techLead, techManager, pocRequired, pocEndDate, pocStatus, pocResolution, securitySignoff, technicalSignoff, consPlanSignoff,
 			ccInvolved, ccDone, techBlockers, commercialBlockers, covidImpact, ocsEngaged, expansion, techDecider, techSignoffDate, migrationBy, tigerSeEmail,
-			partnerName, workloadProgression, adopterEmail, adopterName, implementerEmail, implementerName, futureStateComplete, currentStateComplete, consumptionPlanComplete, latestStatus, latestStatusDate)
+			partnerName, workloadProgression, adopterEmail, adopterName, implementerEmail, implementerName, futureStateComplete, currentStateComplete, consumptionPlanComplete, latestStatus, latestStatusDate, latestStatusAuthor)
 		count++
 	}
 
