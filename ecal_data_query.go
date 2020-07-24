@@ -40,8 +40,6 @@ func getECALDataQueryHandler(w http.ResponseWriter, r *http.Request) {
 //
 // Returns data to power the ECAL application.  Specifically returns a list of accounts that should be presented to the user of the app.
 // The instanceEnvironment identifier (sts-dev-preview, sts-prod-live, etc) is required to key the name of the ATP schema to query
-// The userEmail parameter is either a manager or end-user email
-// If the isAdmin paramter is set to true then all data will be returned
 //
 func getECALDataQuery(instanceEnv string) (string, error) {
 	// inject the correct schema name into the query
@@ -174,7 +172,7 @@ func getECALDataQuery(instanceEnv string) (string, error) {
 			&ccInvolved, &ccDone, &techBlockers, &commercialBlockers, &covidImpact, &ocsEngaged, &expansion, &techDecider, &techSignoffDate, &migrationBy, &tigerSeEmail,
 			&partnerName, &workloadProgression, &adopterEmail, &adopterName, &implementerEmail, &implementerName, &futureStateComplete, &currentStateComplete, &consumptionPlanComplete, &latestStatus, &latestStatusDate, &latestStatusAuthor)
 		if err != nil {
-			thisError := fmt.Sprintf("[%s] [%s] getECALOpportunityQuery: Error scanning row: %s", time.Now().Format(time.RFC3339), instanceEnv, err.Error())
+			thisError := fmt.Sprintf("[%s] [%s] getECALDataQuery: Error scanning row: %s", time.Now().Format(time.RFC3339), instanceEnv, err.Error())
 			return "", errors.New(thisError)
 		}
 

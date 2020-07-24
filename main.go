@@ -91,6 +91,7 @@ func main() {
 	http.HandleFunc("/getManagerQuery", basicAuth(getManagerQueryHandler))
 	http.HandleFunc("/getSTSManagerDashboardSummary", basicAuth(getSTSManagerDashboardSummaryHandler))
 	http.HandleFunc("/getECALAccountQuery", basicAuth(getECALAccountQueryHandler))
+	http.HandleFunc("/getECALArtifactQuery", basicAuth(getECALArtifactQueryHandler))
 	http.HandleFunc("/getECALDataQuery", basicAuth(getECALDataQueryHandler))
 	http.HandleFunc("/getECALOpportunityQuery", basicAuth(getECALOpportunityQueryHandler))
 	http.HandleFunc("/getIdentities", basicAuth(getIdentitiesQueryHandler))

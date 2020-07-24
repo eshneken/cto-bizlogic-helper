@@ -97,6 +97,8 @@ All endpoints require basic auth username & password except for the health check
 * health:                           http://{{hostname}}/health [GET]
 * getManagerQuery:                  http://{{hostname}}/getManagerQuery?managerEmail={{email_addr}}&instanceEnvironment={{instance-env}} [GET]
 * getSTSManagerDashboardSummary:    http://{{hostname}}/getSTSManagerDashboardSummary?managerEmail={{email_addr}}&instanceEnvironment={{instance-env}} [GET]
+* getEcalDataQuery:    http://{{hostname}}/getEcalDataQuery?instanceEnvironment={{instance-env}} [GET]
+* getEcalArtifactQuery:    http://{{hostname}}/getEcalArtifactQuery?instanceEnvironment={{instance-env}} [GET]
 * getIdentities:                    http://{{hostname}}/getIdentities [GET]
 * postIdentities:                   http://{{hostname}}/postIdentities [POST]
 * postReferenceData:                http://{{hostname}}/postOpportunityLookup?position={{first|middle|last|reprocess}}&type={{identity|opportunity|account}} [POST]
