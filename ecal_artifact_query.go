@@ -49,7 +49,7 @@ func getECALArtifactQuery(instanceEnv string) (string, error) {
 	}
 
 	// set the core query
-	var template = `select a.accountname account, o.opportunityid oppid, sf.name solutionfoucs, ra.name type, a.lastupdatedby ce, to_char(a.lastupdatedate, 'MM-DD-YYYY') uploaded, a.location url
+	var template = `select a.id, a.accountname account, o.opportunityid oppid, sf.name solutionfoucs, ra.name type, a.lastupdatedby ce, to_char(a.lastupdatedate, 'MM-DD-YYYY') uploaded, a.location url
 	from %SCHEMA%.opportunityartifacts a
 	inner join %SCHEMA%.opportunity o on a.opportunity = o.id
 	inner join %SCHEMA%.account a on o.account = a.id
@@ -59,7 +59,7 @@ func getECALArtifactQuery(instanceEnv string) (string, error) {
 	where round(cast(SYSDATE as DATE) - cast(a.lastupdatedate as date)) < 180
 	order by a.lastupdatedate desc`
 
-	var jsonResultTemplate = `{"account":"%s","opp_id":"%s","solution_focus":"%s","artifact_type":"%s","ce":"%s","uploaded":"%s","location":"%s"},`
+	var jsonResultTemplate = `{"id":"%s","account":"%s","opp_id":"%s","solution_focus":"%s","artifact_type":"%s","ce":"%s","uploaded":"%s","location":"%s"},`
 
 	// replace the %SCHEMA% template with the correct schema name
 	query := strings.ReplaceAll(template, "%SCHEMA%", SchemaMap[instanceEnv])
@@ -74,20 +74,20 @@ func getECALArtifactQuery(instanceEnv string) (string, error) {
 	defer rows.Close()
 
 	// vars to hold row results
-	var account, oppid, solutionfocus, artifactType, ce, uploaded, location string
+	var id, account, oppid, solutionfocus, artifactType, ce, uploaded, location string
 
 	// step through each row returned and add to the query filter using the correct format
 	result := ""
 	count := 0
 	for rows.Next() {
-		err := rows.Scan(&account, &oppid, &solutionfocus, &artifactType, &ce, &uploaded, &location)
+		err := rows.Scan(&id, &account, &oppid, &solutionfocus, &artifactType, &ce, &uploaded, &location)
 		if err != nil {
 			thisError := fmt.Sprintf("[%s] [%s] getECALArtifactQuery: Error scanning row: %s", time.Now().Format(time.RFC3339), instanceEnv, err.Error())
 			return "", errors.New(thisError)
 		}
 
 		result += fmt.Sprintf(jsonResultTemplate,
-			account, oppid, solutionfocus, artifactType, ce, uploaded, location)
+			id, account, oppid, solutionfocus, artifactType, ce, uploaded, location)
 		count++
 	}
 
