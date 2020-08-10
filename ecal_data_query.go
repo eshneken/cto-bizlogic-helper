@@ -49,26 +49,58 @@ func getECALDataQuery(instanceEnv string) (string, error) {
 	}
 
 	// set the core query
-	var template = `with function calculateColor(csa number, cp number, cs number, fs number, sec number, tech number, poc number, ccInvolved number, ccSar number) return char is
-    totalCount number := 6;
-    score number := csa + cp + cs+ fs + sec + tech;
-		begin
-			if poc = 1 then 
-				totalCount := totalCount + 1;
-				score := score + poc;
-			end if;
-			if ccInvolved = 1 then
-				totalCount := totalCount + 1;
-				score := score + ccSar;
-			end if;
-			if score <=2 then
-				return 'R';
-			elsif score > 2 and score < totalCount then
-				return 'Y';
-			else
-				return 'G';
-			end if;
-		end;
+	var template = `with function calculateColor(adopter varchar2, implementer varchar2, logarch number, archdiag number, bom number, poc number, pocstatus varchar2, secsignoff number, 
+		techsignoff number, consplan number, consplansignoff number, ccInvolved number, ccSar number) return char is
+totalCount number := 10;
+score number := 0;
+begin
+-- Existing business applications or process identified with consumption potential
+score := score + 1;
+-- Identity customer implementer/adoption owner
+if length(implementer) > 1 and length(adopter) > 1 then
+score := score + 1;
+end if;
+-- Solution Reviewed (Technical and Functional Design)
+if logarch = 1 and archdiag = 1 then
+score := score + 1;
+end if;
+-- Initial BOM Identified
+if bom = 1 then
+score := score + 1;
+end if;
+-- POC Complete if POC required
+if (poc = 0) or (poc = 1 and pocstatus = 'Completed') then
+score := score + 1;
+end if;
+-- Final Solution Architecture & BOM Completed
+if logarch = 1 and bom = 1 and techsignoff = 1 then
+score := score + 1;
+end if;
+-- Complete Security Review
+if secsignoff = 1 then
+score := score + 1;
+end if;
+-- Customer Agrees to Consumption plan
+if consplan = 1 and consplansignoff = 1 then
+score := score + 1;
+end if;
+-- Technical Signoff w/ date/email
+if techsignoff = 1 then
+score := score + 1;
+end if;
+-- SAR Complete if C@C deal
+if (ccInvolved = 0) or (ccInvolved = 1 and ccSar = 'Completed') then
+score := score + 1;
+end if;
+-- return color code for score
+if score <= 4 then
+return 'R';
+elsif score > 2 and score < totalCount then
+return 'Y';
+else
+return 'G';
+end if;
+end;
 		select  
 			distinct(o.id) as ecal_workload_id,
 			a.id as ecal_account_id,
@@ -79,15 +111,19 @@ func getECALDataQuery(instanceEnv string) (string, error) {
 			a.cimid as cim_id,
 			o.summary as workload_summary,    
 			calculateColor(
-				nvl(a.currentcsaexecuted, 0), 
-				(select ora3.done FROM %SCHEMA%.opportunityrequiredarti ora3 INNER JOIN %SCHEMA%.requiredartifacts ra3 ON ora3.requiredartifact = ra3.id where o.id = ora3.opportunity and ra3.name = 'Consumption Plan'), 
-				(select ora2.done FROM %SCHEMA%.opportunityrequiredarti ora2 INNER JOIN %SCHEMA%.requiredartifacts ra2 ON ora2.requiredartifact = ra2.id where o.id = ora2.opportunity and ra2.name = 'Architecture Diagram'), 
-				(select ora1.done FROM %SCHEMA%.opportunityrequiredarti ora1 INNER JOIN %SCHEMA%.requiredartifacts ra1 ON ora1.requiredartifact = ra1.id where o.id = ora1.opportunity and ra1.name = 'Logical Architecture'), 
+				th.adoptionowneremail,
+				th.implementeremail,
+				(select ora1.done from %SCHEMA%.opportunityrequiredarti ora1 inner join %SCHEMA%.requiredartifacts ra1 ON ora1.requiredartifact = ra1.id where o.id = ora1.opportunity and ra1.name = 'Logical Architecture'),
+				(select ora2.done from %SCHEMA%.opportunityrequiredarti ora2 inner join %SCHEMA%.requiredartifacts ra2 ON ora2.requiredartifact = ra2.id where o.id = ora2.opportunity and ra2.name = 'Architecture Diagram'),
+				(select ora3.done from %SCHEMA%.opportunityrequiredarti ora3 inner join %SCHEMA%.requiredartifacts ra3 ON ora3.requiredartifact = ra3.id where o.id = ora3.opportunity and ra3.name = 'Bill of Materials'),
+				nvl(th.pocrequired, 0),
+				nvl(th.pocstatus, 'Not Started'),
 				nvl(th.securitysignoffdone, 0), 
 				nvl(th.technicalsignoffdone, 0), 
-				nvl(th.pocrequired, 0), 
+				(select ora4.done from %SCHEMA%.opportunityrequiredarti ora4 inner join %SCHEMA%.requiredartifacts ra4 ON ora4.requiredartifact = ra4.id where o.id = ora4.opportunity and ra4.name = 'Consumption Plan'), 
+				nvl(th.consumptionplansignoff, 0),
 				nvl(th.cloudatcustomerinvolved, 0), 
-				nvl(th.cloudatcustomersardone, 0)) 
+				nvl(th.cloudatcustomersardone, 0))
 			as color,
 			nvl((select stage FROM %SCHEMA%.EcalStage where id = o.lateststagedone), 'None') as latest_ecal_stage_done,
 			nvl(a.currentcsaexecuted, 0) as csa_executed,
