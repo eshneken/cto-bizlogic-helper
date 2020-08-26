@@ -232,7 +232,7 @@ func processIdentity(filename string) {
 					"\",\"mail\":\"" + person.EmployeeEmailAddress +
 					"\",\"givenname\":\"" + strings.TrimRight(nameSplit[0], " ") +
 					"\",\"displayname\":\"" + person.EmployeeFullName +
-					"\",\"uid1\":\"" + strings.ToLower(person.OracleUID) +
+					"\",\"lob\":\"" + person.LobTag +
 					"\",\"num_directs\":" + person.NumDirects + "},"
 				includedEmps++
 			}
