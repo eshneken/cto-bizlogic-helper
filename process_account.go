@@ -189,7 +189,8 @@ func collapseBusinessSegment(businessSegment string) string {
 	if strings.Contains(businessSegment, "Public Sector") {
 		return "Public Sector"
 	}
-	return ""
+	// we can never have a null value here so default to SMB if nothing is determined
+	return "SMB"
 
 }
 
