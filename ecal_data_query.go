@@ -175,7 +175,7 @@ end;
 		INNER JOIN %SCHEMA%.Account a ON a.id = o.account
 		LEFT OUTER JOIN %SCHEMA%.OpportunityTechHealth th ON th.opportunity = o.id
 		LEFT OUTER JOIN %SCHEMA%.OpportunityWorkload w ON w.opportunity = o.id
-		LEFT OUTER JOIN %SCHEMA%.User1 u ON o.createdby = u.useremail
+		LEFT OUTER JOIN %SCHEMA%.User1 u ON o.technicallead = u.useremail
 		LEFT OUTER JOIN %SCHEMA%.OpportunityStatus os ON o.id = os.opportunity
 		and not exists (select 1 FROM %SCHEMA%.OpportunityStatus os1 where os1.opportunity = o.id and os1.creationdate > os.creationdate)`
 
