@@ -89,7 +89,7 @@ if techsignoff = 1 then
 score := score + 1;
 end if;
 -- SAR Complete if C@C deal
-if (ccInvolved = 0) or (ccInvolved = 1 and ccSar = 'Completed') then
+if (ccInvolved = 0) or (ccInvolved = 1 and ccSar = 1) then
 score := score + 1;
 end if;
 -- return color code for score
