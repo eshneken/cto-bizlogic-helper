@@ -120,6 +120,7 @@ func processAccount(filename string) {
 		account.NacSeTeam = tokenizeSeList(account.NacSeTeam)
 		account.NatSeTeam = tokenizeSeList(account.NatSeTeam)
 		account.BusinessSegment = collapseBusinessSegment(account.BusinessSegment)
+		account.AccountName = strings.ReplaceAll(account.AccountName, "\"", "")
 
 		// add account to LookupAccount staging table
 		if account.BusinessSegment != paygo {
