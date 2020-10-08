@@ -171,16 +171,16 @@ end;
 			to_char(os.creationdate, 'MM-DD-YYYY') as latest_status_date,
 			os.lastupdatedby as latest_status_author,
 			-- 08-OCT-2020 PBOCCHIO START
-			, o.lateststagedone
-			, (select decode(sum(ora.done),0, min(s.phase), max(s.phase)) phase
+			o.lateststagedone,
+			(select decode(sum(ora.done),0, min(s.phase), max(s.phase)) phase
 				from %SCHEMA%.opportunityrequiredarti ora
 				inner join %SCHEMA%.requiredartifacts ra on ra.id = ora.requiredartifact
 				inner join %SCHEMA%.ecalstage s on ra.ecalstage = s.id 
 				inner join %SCHEMA%.ecalphase p on s.phase = p.id
 				where ora.opportunity = o.id 
-				group by ora.opportunity ) as currentphase
-			, (select listagg(u.useremail,':') within group (order by DECODE(u.useremail,o.technicallead,1,0) desc, u.useremail) from %SCHEMA%.useraccount ua inner join %SCHEMA%.user1 u on u.id = ua.user1 where ua.account = o.account  ) resourceslist
-			, (select listagg(DECODE(u.useremail,o.technicallead,'Y','N'),':') within group (order by DECODE(u.useremail,o.technicallead,1,0) desc, u.useremail) from %SCHEMA%.useraccount ua inner join %SCHEMA%.user1 u on u.id = ua.user1 where ua.account = o.account ) techleadlist
+				group by ora.opportunity ) as currentphase,
+			(select listagg(u.useremail,':') within group (order by DECODE(u.useremail,o.technicallead,1,0) desc, u.useremail) from %SCHEMA%.useraccount ua inner join %SCHEMA%.user1 u on u.id = ua.user1 where ua.account = o.account  ) resourceslist,
+			(select listagg(DECODE(u.useremail,o.technicallead,'Y','N'),':') within group (order by DECODE(u.useremail,o.technicallead,1,0) desc, u.useremail) from %SCHEMA%.useraccount ua inner join %SCHEMA%.user1 u on u.id = ua.user1 where ua.account = o.account ) techleadlist,
 			-- 08-OCT-2020 PBOCCHIO END
 		FROM %SCHEMA%.Opportunity o
 		INNER JOIN %SCHEMA%.Account a ON a.id = o.account
