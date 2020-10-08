@@ -13,7 +13,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 )
 
 // OpportunityLookup represents an individual returned from the custom Aria export service
@@ -62,16 +61,16 @@ func processOpportunity(filename string) {
 	// determine appropriate instance-environment based on the value of the config.json setting
 	schema := SchemaMap[GlobalConfig.ECALOpportunitySyncTarget]
 	if len(schema) < 1 {
-		fmt.Printf("[%s] processOpportunity: Schema for [%s] not valid\n",
-			time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget)
+		message := fmt.Sprintf("Schema for (%s) not valid", GlobalConfig.ECALOpportunitySyncTarget)
+		logOutput(logError, "process_opportunity", message)
 		return
 	}
 
 	// open file for reading
 	file, err := os.Open(filename)
 	if err != nil {
-		fmt.Printf("[%s] processOpportunity: Error opening file [%s]: %s\n",
-			time.Now().Format(time.RFC3339), filename, err.Error())
+		message := fmt.Sprintf("Error opening file (%s]): %s", filename, err.Error())
+		logOutput(logError, "process_opportunity", message)
 		return
 	}
 	defer file.Close()
@@ -79,27 +78,30 @@ func processOpportunity(filename string) {
 	// seek 10 bytes (chars) to advance past {"items":
 	_, err = file.Seek(10, io.SeekStart)
 	if err != nil {
-		fmt.Printf("[%s] processOpportunity: Error advancing file stream to position 10: %s\n",
-			time.Now().Format(time.RFC3339), err.Error())
+		message := fmt.Sprintf("Error advancing file stream to position 10: %s", err.Error())
+		logOutput(logError, "process_opportunity", message)
 		return
 	}
 
 	// decode full opportunity list from response
 	decoder := json.NewDecoder(file)
-	fmt.Printf("[%s] [%s] processOpportunity: START Processing opportunities\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget)
+	message := fmt.Sprintf("START Processing opportunities (%s)", GlobalConfig.ECALOpportunitySyncTarget)
+	logOutput(logInfo, "process_opportunity", message)
 
 	// start a DB transaction
 	tx, err := DBPool.Begin()
 	defer tx.Rollback()
 	if err != nil {
-		fmt.Printf("[%s] [%s] processOpportunity: Error creating DB transaction: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		message := fmt.Sprintf("Error creating DB transaction (%s): %s", GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		logOutput(logError, "process_opportunity", message)
 		return
 	}
 
 	// delete all data from LookupOpportunity table
 	_, err = tx.Exec("DELETE FROM " + schema + ".LookupOpportunity")
 	if err != nil {
-		fmt.Printf("[%s] [%s] processOpportunity: Unable to delete from LookupOpportunity: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		message := fmt.Sprintf("Unable to delete from LookupOpportunity (%s): %s", GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		logOutput(logError, "process_opportunity", message)
 		return
 	}
 
@@ -121,7 +123,8 @@ func processOpportunity(filename string) {
 	insertStmt, err := tx.Prepare(queryString)
 	defer insertStmt.Close()
 	if err != nil {
-		fmt.Printf("[%s] [%s] processOpportunity: Unable to prepare statement for insert: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		message := fmt.Sprintf("Unable to prepare statement for insert (%s): %s", GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		logOutput(logError, "process_opportunity", message)
 		return
 	}
 
@@ -134,7 +137,8 @@ func processOpportunity(filename string) {
 			" WHERE o.opportunityid = :8 and w.workloadidentifier = :9)")
 	defer updateStmt1.Close()
 	if err != nil {
-		fmt.Printf("[%s] [%s] processOpportunity: Unable to prepare statement for Opportunity update: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		message := fmt.Sprintf("Unable to prepare statement for Opportunity update (%s): %s", GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		logOutput(logError, "process_opportunity", message)
 		return
 	}
 	updateStmt2, err := tx.Prepare(
@@ -144,15 +148,16 @@ func processOpportunity(filename string) {
 			" WHERE o.opportunityid = :5 and w.workloadidentifier = :6)")
 	defer updateStmt2.Close()
 	if err != nil {
-		fmt.Printf("[%s] [%s] processOpportunity: Unable to prepare statement for OpportunityWorkload update: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		message := fmt.Sprintf("Unable to prepare statement for OpportunityWorkload update (%s): %s", GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		logOutput(logError, "process_opportunity", message)
 		return
 	}
 
 	// consume the opening array brace
 	_, err = decoder.Token()
 	if err != nil {
-		fmt.Printf("[%s] [%s] processOpportunity: Error decoding opening array token: %s\n",
-			time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		message := fmt.Sprintf("Error decoding opening array token (%s): %s", GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		logOutput(logError, "process_opportunity", message)
 		return
 	}
 
@@ -164,8 +169,9 @@ func processOpportunity(filename string) {
 		var opp OpportunityLookup
 		err := decoder.Decode(&opp)
 		if err != nil {
-			fmt.Printf("[%s] [%s] processOpportunity: Error decoding person %d: %s\n",
-				time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, counter, err.Error())
+			message := fmt.Sprintf("(%s) Error decoding person %d: %s",
+				GlobalConfig.ECALOpportunitySyncTarget, counter, err.Error())
+			logOutput(logError, "process_opportunity", message)
 			return
 		}
 
@@ -206,7 +212,9 @@ func processOpportunity(filename string) {
 				revenuePipelineK*1000, revenueTCVK*1000, workloadProbability, opp.ProductClass, opp.ProductPillar, opp.ProductLine, opp.ProductGroup,
 				opp.ProductName, opp.ProductDescription, workloadAmount*1000, opp.ConsumptionStartDate, consumptionRampMonths, opp.L2TerritoryName, opp.L3TerritoryName, opp.L2TerritoryEmail, opp.L3TerritoryEmail)
 			if err != nil {
-				fmt.Printf("[%s] [%s] processOpportunity: Unable to insert opportunity %s into LookupOpportunity: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, opp.OppID, err.Error())
+				message := fmt.Sprintf("Unable to insert opportunity %s into LookupOpportunity (%s): %s",
+					opp.OppID, GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+				logOutput(logError, "process_opportunity", message)
 				return
 			}
 			insertedOpps++
@@ -216,14 +224,18 @@ func processOpportunity(filename string) {
 		// this will allow us to 'close' previously open opportunities
 		_, err = updateStmt1.Exec(opp.OppName, opp.OppOwner, revenuePipelineK*1000, opportunityValue*1000, opp.OppStatus, opp.CloseDate, winProbability, opp.OppID, opp.RevenueLineID)
 		if err != nil {
-			fmt.Printf("[%s] [%s] processOpportunity: Unable to update opportunity %s in Opportunity: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, opp.OppID, err.Error())
+			message := fmt.Sprintf("Unable to update opportunity %s in Opportunity (%s): %s",
+				opp.OppID, GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+			logOutput(logError, "process_opportunity", message)
 			return
 		}
 		// update existing OpportunityWorkload table with any updated data.  We do this regardless of opportunity status since
 		// this will allow us to 'close' previously open opportunities
 		_, err = updateStmt2.Exec(opp.ProductDescription, opp.ConsumptionStartDate, consumptionRampMonths, opp.ProductGroup, opp.OppID, opp.RevenueLineID)
 		if err != nil {
-			fmt.Printf("[%s] [%s] processOpportunity: Unable to update opportunity %s in OpportunityWorkload: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, opp.OppID, err.Error())
+			message := fmt.Sprintf("Unable to update opportunity %s in OpportunityWorkload (%s): %s",
+				opp.OppID, GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+			logOutput(logError, "process_opportunity", message)
 			return
 		}
 
@@ -233,18 +245,23 @@ func processOpportunity(filename string) {
 	// consume the closing array brace
 	_, err = decoder.Token()
 	if err != nil {
-		fmt.Printf("[%s] [%s] processIdentity: Error decoding closing array token: %s\n",
-			time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		message := fmt.Sprintf("Error decoding closing array token (%s): %s",
+			GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		logOutput(logError, "process_opportunity", message)
 		return
 	}
 
 	// complete the transaction
 	err = tx.Commit()
 	if err != nil {
-		fmt.Printf("[%s] [%s] processOpportunity: Error committing transaction: %s\n", time.Now().Format(time.RFC3339),
+		message := fmt.Sprintf("Error committing transaction (%s): %s",
 			GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		logOutput(logError, "process_opportunity", message)
 		return
 	}
 
-	fmt.Printf("[%s] [%s] processOpportunity: DONE Processing %d opportunities with %d in Open/Won state\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, counter-1, insertedOpps)
+	message = fmt.Sprintf("DONE Processing %d opportunities with %d in Open/Won state for %s",
+		counter-1, insertedOpps, GlobalConfig.ECALOpportunitySyncTarget)
+	logOutput(logInfo, "process_opportunity", message)
+
 }

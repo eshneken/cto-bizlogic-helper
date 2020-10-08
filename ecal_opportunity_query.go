@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 )
 
 //
@@ -35,7 +34,7 @@ func getECALOpportunityQueryHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(500)
 		fmt.Fprintf(w, "Error in input parameters or processing; please contact your service administrator")
-		fmt.Printf("***ERROR: %s\n", string(err.Error()))
+		logOutput(logError, "opp_query", string(err.Error()))
 		return
 	}
 
@@ -56,7 +55,7 @@ func getECALOpportunityQueryHandler(w http.ResponseWriter, r *http.Request) {
 func getECALOpportunityQuery(instanceEnv string, userEmail string, isAdmin bool) (string, error) {
 	// inject the correct schema name into the query
 	if len(instanceEnv) < 1 {
-		thisError := fmt.Sprintf("[%s] [%s] [%s] [%s] getECALOpportunityQuery: instanceEnvironment query parameter is invalid", time.Now().Format(time.RFC3339), instanceEnv, userEmail, strconv.FormatBool(isAdmin))
+		thisError := fmt.Sprintf("instanceEnv query parameter is invalid (%s, %s, %s)", instanceEnv, userEmail, strconv.FormatBool(isAdmin))
 		return "", errors.New(thisError)
 	}
 
@@ -114,7 +113,7 @@ func getECALOpportunityQuery(instanceEnv string, userEmail string, isAdmin bool)
 		rows, err = DBPool.Query(query, userEmail)
 	}
 	if err != nil {
-		thisError := fmt.Sprintf("[%s] [%s] [%s] [%s] getECALOpportunityQuery: Error running query: %s", time.Now().Format(time.RFC3339), instanceEnv, userEmail, strconv.FormatBool(isAdmin), err.Error())
+		thisError := fmt.Sprintf("Error running query (%s, %s, %s): %s", instanceEnv, userEmail, strconv.FormatBool(isAdmin), err.Error())
 		return "", errors.New(thisError)
 	}
 	defer rows.Close()
@@ -129,7 +128,7 @@ func getECALOpportunityQuery(instanceEnv string, userEmail string, isAdmin bool)
 	for rows.Next() {
 		err := rows.Scan(&id, &accountID, &accountName, &opportunityID, &workloadType, &summary, &arr, &ecalPercent, &latestECALStage, &lastActivity, &poc, &pocStatus, &commercialBlockers, &technicalBlockers)
 		if err != nil {
-			thisError := fmt.Sprintf("[%s] [%s] [%s] [%s] getECALOpportunityQuery: Error scanning row: %s", time.Now().Format(time.RFC3339), instanceEnv, userEmail, strconv.FormatBool(isAdmin), err.Error())
+			thisError := fmt.Sprintf("Error scanning row (%s, %s, %s): %s", instanceEnv, userEmail, strconv.FormatBool(isAdmin), err.Error())
 			return "", errors.New(thisError)
 		}
 
@@ -150,7 +149,5 @@ func getECALOpportunityQuery(instanceEnv string, userEmail string, isAdmin bool)
 
 	// string the trailing 'or' field if it exists
 	result = strings.TrimSuffix(result, ",")
-
-	//fmt.Printf("[%s] [%s] [%s] [%s] getECALOpportunityQuery: results=%d\n", time.Now().Format(time.RFC3339), instanceEnv, userEmail, strconv.FormatBool(isAdmin), count)
 	return result, nil
 }

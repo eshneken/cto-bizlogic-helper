@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"time"
 )
 
 //
@@ -21,8 +20,8 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 
 	schema := SchemaMap[GlobalConfig.ECALOpportunitySyncTarget]
 	if len(schema) < 1 {
-		thisError := fmt.Sprintf("[%s] Config healthcheck failed: Schema identifier [%s] not mappable", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget)
-		fmt.Println(thisError)
+		thisError := fmt.Sprintf("Config healthcheck failed: Schema identifier %s not mappable", GlobalConfig.ECALOpportunitySyncTarget)
+		logOutput(logError, "healthcheck", thisError)
 		healthErrors = healthErrors + ":CONFIG"
 		healthy = false
 	}
@@ -30,8 +29,8 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	// make sure the database connection can be made
 	rows1, err := DBPool.Query("SELECT SYSDATE FROM DUAL")
 	if err != nil {
-		thisError := fmt.Sprintf("[%s] DB healthcheck failed: %s", time.Now().Format(time.RFC3339), err.Error())
-		fmt.Println(thisError)
+		thisError := fmt.Sprintf("DB healthcheck failed: %s", err.Error())
+		logOutput(logError, "healthcheck", thisError)
 		healthErrors = healthErrors + ":DB_ACCESS"
 		healthy = false
 	}
@@ -41,8 +40,8 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	count := 0
 	rows2, err := DBPool.Query("SELECT count(*) FROM " + schema + ".LookupAccount")
 	if err != nil {
-		thisError := fmt.Sprintf("[%s] Account healthcheck failed: %s", time.Now().Format(time.RFC3339), err.Error())
-		fmt.Println(thisError)
+		thisError := fmt.Sprintf("Account healthcheck failed: %s", err.Error())
+		logOutput(logError, "healthcheck", thisError)
 		healthErrors = healthErrors + ":ACCOUNT_DATA"
 		healthy = false
 	} else {
@@ -53,8 +52,8 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 			if err == nil {
 				err = errors.New("LookupAccount has 0 rows")
 			}
-			thisError := fmt.Sprintf("[%s] Account healthcheck failed: %s", time.Now().Format(time.RFC3339), err.Error())
-			fmt.Println(thisError)
+			thisError := fmt.Sprintf("Account healthcheck failed: %s", err.Error())
+			logOutput(logError, "healthcheck", thisError)
 			healthErrors = healthErrors + ":ACCOUNT_COUNT"
 			healthy = false
 		}
@@ -64,8 +63,8 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	count = 0
 	rows3, err := DBPool.Query("SELECT count(*) FROM " + schema + ".LookupOpportunity")
 	if err != nil {
-		thisError := fmt.Sprintf("[%s] Opportunity healthcheck failed: %s", time.Now().Format(time.RFC3339), err.Error())
-		fmt.Println(thisError)
+		thisError := fmt.Sprintf("Opportunity healthcheck failed: %s", err.Error())
+		logOutput(logError, "healthcheck", thisError)
 		healthErrors = healthErrors + ":OPPORTUNITY_DATA"
 		healthy = false
 	} else {
@@ -76,8 +75,8 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 			if err == nil {
 				err = errors.New("LookupOpportunity has 0 rows")
 			}
-			thisError := fmt.Sprintf("[%s] Opportunity healthcheck failed: %s", time.Now().Format(time.RFC3339), err.Error())
-			fmt.Println(thisError)
+			thisError := fmt.Sprintf("Opportunity healthcheck failed: %s", err.Error())
+			logOutput(logError, "healthcheck", thisError)
 			healthErrors = healthErrors + ":OPPORTUNITY_COUNT"
 			healthy = false
 		}
@@ -86,8 +85,8 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	// make sure identity filename exists and is readable
 	_, err = ioutil.ReadFile(GlobalConfig.IdentityFilename)
 	if err != nil {
-		thisError := fmt.Sprintf("[%s] FILE healthcheck failed: %s", time.Now().Format(time.RFC3339), err.Error())
-		fmt.Println(thisError)
+		thisError := fmt.Sprintf("FILE healthcheck failed: %s", err.Error())
+		logOutput(logError, "healthcheck", thisError)
 		healthErrors = healthErrors + ":IDENTITY_DATA"
 		healthy = false
 	}

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 )
 
 //
@@ -25,7 +24,7 @@ func getECALDataQueryHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(500)
 		fmt.Fprintf(w, "Error in input parameters or processing; please contact your service administrator")
-		fmt.Printf("***ERROR: %s\n", string(err.Error()))
+		logOutput(logError, "ecal_data_query", string(err.Error()))
 		return
 	}
 
@@ -44,7 +43,7 @@ func getECALDataQueryHandler(w http.ResponseWriter, r *http.Request) {
 func getECALDataQuery(instanceEnv string) (string, error) {
 	// inject the correct schema name into the query
 	if len(instanceEnv) < 1 {
-		thisError := fmt.Sprintf("[%s] [%s] getECALDataQuery: instanceEnvironment query parameter is invalid", time.Now().Format(time.RFC3339), instanceEnv)
+		thisError := fmt.Sprintf("instanceEnvironment query parameter is invalid (%s)", instanceEnv)
 		return "", errors.New(thisError)
 	}
 
@@ -143,16 +142,16 @@ end;
 			nvl(th.coronavirusimpact, 0) as covid_impact,
 			nvl(th.oracleconsultingengaged, 0) as ocs_engaged,
 			nvl(th.expansion, 0) as expansion,
-			translate(th.technicaldecisionmakern, chr(10)||chr(11)||chr(13), '  ') as tech_decider,
+			translate(th.technicaldecisionmakern, chr(10)||chr(11)||chr(13)||chr(34), '  ') as tech_decider,
 			to_char(th.technicalsignoffdate, 'MM-DD-YYYY') as tech_signoff_date,
-			translate(th.migrationrunby, chr(10)||chr(11)||chr(13), '  ') as migration_by,
-			translate(th.tigerseemail, chr(10)||chr(11)||chr(13), '  ') as tiger_se_email,
-			translate(th.partnername, chr(10)||chr(11)||chr(13), '  ') as partner_name,
-			translate(th.workloadprogressionstage, chr(10)||chr(11)||chr(13), '  ') as workload_progression,
-			translate(th.adoptionowneremail, chr(10)||chr(11)||chr(13), '  ') as adopter_email,
-			translate(th.adoptionownernametitle, chr(10)||chr(11)||chr(13), '  ') as adopter_name,
-			translate(th.implementeremail, chr(10)||chr(11)||chr(13), '  ') as implementer_email,
-			translate(th.implementernametitle, chr(10)||chr(11)||chr(13), '  ') as implementer_name,
+			translate(th.migrationrunby, chr(10)||chr(11)||chr(13)||chr(34), '  ') as migration_by,
+			translate(th.tigerseemail, chr(10)||chr(11)||chr(13)||chr(34), '  ') as tiger_se_email,
+			translate(th.partnername, chr(10)||chr(11)||chr(13)||chr(34), '  ') as partner_name,
+			translate(th.workloadprogressionstage, chr(10)||chr(11)||chr(13)||chr(34), '  ') as workload_progression,
+			translate(th.adoptionowneremail, chr(10)||chr(11)||chr(13)||chr(34), '  ') as adopter_email,
+			translate(th.adoptionownernametitle, chr(10)||chr(11)||chr(13)||chr(34), '  ') as adopter_name,
+			translate(th.implementeremail, chr(10)||chr(11)||chr(13)||chr(34), '  ') as implementer_email,
+			translate(th.implementernametitle, chr(10)||chr(11)||chr(13)||chr(34), '  ') as implementer_name,
 			(select ora1.done
 			FROM %SCHEMA%.OpportunityRequiredArti ora1
 			INNER JOIN %SCHEMA%.RequiredArtifacts ra1 ON ora1.requiredartifact = ra1.id
@@ -168,7 +167,7 @@ end;
 			FROM %SCHEMA%.OpportunityRequiredArti ora3
 			INNER JOIN %SCHEMA%.RequiredArtifacts ra3 ON ora3.requiredartifact = ra3.id
 			where o.id = ora3.opportunity and ra3.name = 'Consumption Plan') as consumption_plan_complete,
-			translate(nvl(os.status, 'No Status Entered'), chr(10)||chr(11)||chr(13), '  ') as latest_status,
+			translate(nvl(os.status, 'No Status Entered'), chr(10)||chr(11)||chr(13)||chr(34), '  ') as latest_status,
 			to_char(os.creationdate, 'MM-DD-YYYY') as latest_status_date,
 			os.lastupdatedby as latest_status_author
 		FROM %SCHEMA%.Opportunity o
@@ -188,7 +187,7 @@ end;
 	// run the query
 	rows, err := DBPool.Query(query)
 	if err != nil {
-		thisError := fmt.Sprintf("[%s] [%s] getECALDataQuery: Error running query: %s", time.Now().Format(time.RFC3339), instanceEnv, err.Error())
+		thisError := fmt.Sprintf("Error running query (%s): %s", instanceEnv, err.Error())
 		return "", errors.New(thisError)
 	}
 	defer rows.Close()
@@ -208,7 +207,7 @@ end;
 			&ccInvolved, &ccDone, &techBlockers, &commercialBlockers, &covidImpact, &ocsEngaged, &expansion, &techDecider, &techSignoffDate, &migrationBy, &tigerSeEmail,
 			&partnerName, &workloadProgression, &adopterEmail, &adopterName, &implementerEmail, &implementerName, &futureStateComplete, &currentStateComplete, &consumptionPlanComplete, &latestStatus, &latestStatusDate, &latestStatusAuthor)
 		if err != nil {
-			thisError := fmt.Sprintf("[%s] [%s] getECALDataQuery: Error scanning row: %s", time.Now().Format(time.RFC3339), instanceEnv, err.Error())
+			thisError := fmt.Sprintf("Error scanning row (%s): %s", instanceEnv, err.Error())
 			return "", errors.New(thisError)
 		}
 
@@ -223,6 +222,5 @@ end;
 	// string the trailing 'or' field if it exists
 	result = strings.TrimSuffix(result, ",")
 
-	//fmt.Printf("[%s] [%s] getECALDataQuery: results=%d\n", time.Now().Format(time.RFC3339), instanceEnv, count)
 	return result, nil
 }

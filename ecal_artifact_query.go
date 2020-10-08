@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 )
 
 //
@@ -25,7 +24,7 @@ func getECALArtifactQueryHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(500)
 		fmt.Fprintf(w, "Error in input parameters or processing; please contact your service administrator")
-		fmt.Printf("***ERROR: %s\n", string(err.Error()))
+		logOutput(logError, "ecal_artifact_query", string(err.Error()))
 		return
 	}
 
@@ -44,7 +43,7 @@ func getECALArtifactQueryHandler(w http.ResponseWriter, r *http.Request) {
 func getECALArtifactQuery(instanceEnv string) (string, error) {
 	// inject the correct schema name into the query
 	if len(instanceEnv) < 1 {
-		thisError := fmt.Sprintf("[%s] [%s] getECALArtifactQuery: instanceEnvironment query parameter is invalid", time.Now().Format(time.RFC3339), instanceEnv)
+		thisError := fmt.Sprintf("[instanceEnvironment query parameter is invalid (%s)", instanceEnv)
 		return "", errors.New(thisError)
 	}
 
@@ -68,7 +67,7 @@ func getECALArtifactQuery(instanceEnv string) (string, error) {
 	// run the query
 	rows, err := DBPool.Query(query)
 	if err != nil {
-		thisError := fmt.Sprintf("[%s] [%s] getECALArtifactQuery: Error running query: %s", time.Now().Format(time.RFC3339), instanceEnv, err.Error())
+		thisError := fmt.Sprintf("Error running query (%s): %s", instanceEnv, err.Error())
 		return "", errors.New(thisError)
 	}
 	defer rows.Close()
@@ -82,7 +81,7 @@ func getECALArtifactQuery(instanceEnv string) (string, error) {
 	for rows.Next() {
 		err := rows.Scan(&id, &account, &oppid, &solutionfocus, &artifactType, &ce, &uploaded, &location)
 		if err != nil {
-			thisError := fmt.Sprintf("[%s] [%s] getECALArtifactQuery: Error scanning row: %s", time.Now().Format(time.RFC3339), instanceEnv, err.Error())
+			thisError := fmt.Sprintf("Error scanning row (%s): %s", instanceEnv, err.Error())
 			return "", errors.New(thisError)
 		}
 
@@ -93,7 +92,5 @@ func getECALArtifactQuery(instanceEnv string) (string, error) {
 
 	// string the trailing 'or' field if it exists
 	result = strings.TrimSuffix(result, ",")
-
-	//fmt.Printf("[%s] [%s] getECALArtifactQuery: results=%d\n", time.Now().Format(time.RFC3339), instanceEnv, count)
 	return result, nil
 }

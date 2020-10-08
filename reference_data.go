@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"time"
 )
 
 // postion options
@@ -33,8 +32,8 @@ func postReferenceDataHandler(w http.ResponseWriter, r *http.Request) {
 	if position != first && position != middle && position != last && position != reprocess {
 		w.WriteHeader(500)
 		fmt.Fprintf(w, "Missing or invalid position query string parameter")
-		fmt.Printf("[%s] postReferenceDataHandler: Missing or invalid position parameter: %s\n",
-			time.Now().Format(time.RFC3339), position)
+		message := fmt.Sprintf("Missing or invalid position parameter: %s", position)
+		logOutput(logError, "reference_data", message)
 		return
 	}
 
@@ -42,15 +41,15 @@ func postReferenceDataHandler(w http.ResponseWriter, r *http.Request) {
 	if dataType != identity && dataType != opportunity && dataType != account {
 		w.WriteHeader(500)
 		fmt.Fprintf(w, "Missing or invalid type query string parameter")
-		fmt.Printf("[%s] postReferenceDataHandler: Missing or invalid type parameter: %s\n",
-			time.Now().Format(time.RFC3339), dataType)
+		message := fmt.Sprintf("Missing or invalid type parameter: %s", dataType)
+		logOutput(logError, "reference_data", message)
 		return
 	}
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		fmt.Printf("[%s] postReferenceDataHandler: Unable to read body: %s\n",
-			time.Now().Format(time.RFC3339), err.Error())
+		message := fmt.Sprintf("Unable to read body: %s", err.Error())
+		logOutput(logError, "reference_data", message)
 		fmt.Fprintf(w, "Unable to read body")
 		w.WriteHeader(500)
 		return
@@ -64,29 +63,31 @@ func postReferenceDataHandler(w http.ResponseWriter, r *http.Request) {
 		// first position requires opening a new file and writing to it.  if an old file exists it is overwritten
 		err = ioutil.WriteFile(filename, body, 0700)
 		if err != nil {
-			fmt.Printf("[%s] [%s] postReferenceDataHandler: Error writing to file in 'first' position: %s\n",
-				time.Now().Format(time.RFC3339), dataType, err.Error())
+			message := fmt.Sprintf("Error writing to file in 'first' position (%s): %s", dataType, err.Error())
+			logOutput(logError, "reference_data", message)
 			fmt.Fprintf(w, "Processing Error")
 			w.WriteHeader(500)
 		}
-		fmt.Printf("[%s] [%s] postReferenceDataHandler: START Collecting Data\n",
-			time.Now().Format(time.RFC3339), dataType)
+		message := fmt.Sprintf("[START Collecting Data (%s)", dataType)
+		logOutput(logInfo, "reference_data", message)
 	} else {
 		// all other normative positions (middle & last) require appending to the existing file
 		// we don't do this when reprocessing; we assume a complete file is already on disk
 		if position == middle || position == last {
 			file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0700)
 			if err != nil {
-				fmt.Printf("[%s] [%s] postReferenceDataHandler: Error writing to file [%s] in [%s] position: %s\n",
-					time.Now().Format(time.RFC3339), dataType, filename, position, err.Error())
+				message := fmt.Sprintf("Error writing datatype %s to file %s in %s position: %s",
+					dataType, filename, position, err.Error())
+				logOutput(logError, "reference_data", message)
 				fmt.Fprintf(w, "Processing Error")
 				w.WriteHeader(500)
 			}
 
 			if _, err := file.Write(body); err != nil {
 				file.Close()
-				fmt.Printf("[%s] [%s] postReferenceDataHandler: Error writing to file [%s] in [%s] position: %s\n",
-					time.Now().Format(time.RFC3339), dataType, filename, position, err.Error())
+				message := fmt.Sprintf("Error writing datatype %s to file %s in %s position: %s",
+					dataType, filename, position, err.Error())
+				logOutput(logError, "reference_data", message)
 				fmt.Fprintf(w, "Processing Error")
 				w.WriteHeader(500)
 			}
@@ -95,27 +96,27 @@ func postReferenceDataHandler(w http.ResponseWriter, r *http.Request) {
 
 		// in last position we need to kick off processing.  same applies to reprocessing.
 		if position == last || position == reprocess {
-			fmt.Printf("[%s] [%s] postReferenceDataHandler: DONE Collecting Data\n",
-				time.Now().Format(time.RFC3339), dataType)
+			message := fmt.Sprintf("DONE Collecting Data (%s)", dataType)
+			logOutput(logInfo, "reference_data", message)
 
 			// process identity data in separate goroutine
 			if dataType == identity {
-				fmt.Printf("[%s] [%s] postReferenceDataHandler: Handing off to identity processor\n",
-					time.Now().Format(time.RFC3339), dataType)
+				message = fmt.Sprintf("Handing off to identity processor (%s)", dataType)
+				logOutput(logInfo, "reference_data", message)
 				go processIdentity(filename)
 			}
 
 			// process opportunity data in separate goroutine
 			if dataType == opportunity {
-				fmt.Printf("[%s] [%s] postReferenceDataHandler: Handing off to opportunity processor\n",
-					time.Now().Format(time.RFC3339), dataType)
+				message = fmt.Sprintf("Handing off to opportunity processor (%s)", dataType)
+				logOutput(logInfo, "reference_data", message)
 				go processOpportunity(filename)
 			}
 
 			// process account data in separate goroutine
 			if dataType == account {
-				fmt.Printf("[%s] [%s] postReferenceDataHandler: Handing off to account processor\n",
-					time.Now().Format(time.RFC3339), dataType)
+				message = fmt.Sprintf("Handing off to account processor (%s)", dataType)
+				logOutput(logInfo, "reference_data", message)
 				go processAccount(filename)
 			}
 		}

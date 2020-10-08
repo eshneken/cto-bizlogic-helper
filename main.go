@@ -16,6 +16,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"time"
 
 	_ "github.com/godror/godror"
 	"github.com/oracle/oci-go-sdk/common"
@@ -50,8 +51,13 @@ var SchemaMap map[string]string
 // IdentityMgrLeads contains the top level managers who should be included in the list of employees loaded into the platform
 var IdentityMgrLeads []string
 
+// Logging constants
+const logInfo = "INFO"
+const logWarn = "WARN"
+const logError = "ERROR"
+
 func main() {
-	println("CTO-Bizlogic-Helper says w00t!")
+	logOutput(logInfo, "main", "CTO-Bizlogic-Helper says w00t!")
 
 	// check to see if we should skip config decoding w/ OCI Secrets Service by looking for the --novault flag
 	// use this for local testing where unencrypted config files are used
@@ -59,34 +65,34 @@ func main() {
 	if len(os.Args) > 1 {
 		if os.Args[1] == "--novault" {
 			skipVault = true
-			println("Running in LOCAL mode with NO OCI Secrets Service integration.")
+			logOutput(logInfo, "main", "Running in LOCAL mode with NO OCI Secrets Service integration.")
 		}
 	}
 
 	// read system configuration from config file
-	println("Reading & Decoding config.json")
+	logOutput(logInfo, "main", "Reading & Decoding config.json")
 	GlobalConfig = loadConfig("config.json", skipVault)
 
 	// load schema mappings
-	println("Loading schema mappings")
+	logOutput(logInfo, "main", "Loading schema mappings")
 	SchemaMap = make(map[string]string)
 	err := loadSchemaMap()
 	if err != nil {
-		println(err)
+		logOutput(logError, "main", err.Error())
 		return
 	}
-	println("Routing opportunity data to: " + GlobalConfig.ECALOpportunitySyncTarget)
+	logOutput(logInfo, "main", "Routing opportunity data to: "+GlobalConfig.ECALOpportunitySyncTarget)
 
 	// initialize database connection pool
 	DBPool, err = sql.Open("godror", GlobalConfig.DBConnectString)
 	if err != nil {
-		println(err)
+		logOutput(logError, "main", err.Error())
 		return
 	}
 	defer DBPool.Close()
 
 	// register function listeners
-	println("Registering REST handlers")
+	logOutput(logInfo, "main", "Registering REST handlers")
 	http.HandleFunc("/health", healthHandler)
 	http.HandleFunc("/getManagerQuery", basicAuth(getManagerQueryHandler))
 	http.HandleFunc("/getSTSManagerDashboardSummary", basicAuth(getSTSManagerDashboardSummaryHandler))
@@ -101,10 +107,11 @@ func main() {
 	// emit endpoint/database information
 	dbuser := strings.SplitAfter(GlobalConfig.DBConnectString, "/")
 	sid := strings.SplitAfter(GlobalConfig.DBConnectString, "@")
-	fmt.Printf("Connecting to ATP Connect String: %s*******@%s\n", dbuser[0], sid[1])
+	logMessage := fmt.Sprintf("Connecting to ATP Connect String: %s*******@%s", dbuser[0], sid[1])
+	logOutput(logInfo, "main", logMessage)
 
 	// start HTTP listener
-	println("Starting HTTP Listener on port " + GlobalConfig.ServiceListenPort + "...\n")
+	logOutput(logInfo, "main", "Starting HTTP Listener on port "+GlobalConfig.ServiceListenPort+"...\n")
 	http.ListenAndServe(":"+GlobalConfig.ServiceListenPort, nil)
 }
 
@@ -121,7 +128,7 @@ func loadSchemaMap() error {
 	// create a hashmap for easier runtime lookup
 	for i, item := range instanceEnvKeys {
 		SchemaMap[item] = schemaNames[i]
-		println("\t" + item + " -> " + SchemaMap[item])
+		logOutput(logInfo, "main", "\t"+item+" -> "+SchemaMap[item])
 	}
 
 	return nil
@@ -242,9 +249,14 @@ func outputHTTPError(message string, err error, res *http.Response) string {
 }
 
 //
-// Helper function to print response body as a string
+// Log error to console log.  We specify a particular format so that it can be parsed by the OCI Logging Service
 //
-func printBody(res *http.Response) {
-	bodyBytes, _ := ioutil.ReadAll(res.Body)
-	fmt.Println(string(bodyBytes))
+// [datetime] [INFO|WARN|ERROR] [module] message
+//
+func logOutput(logType string, module string, message string) {
+	if logType != logInfo && logType != logWarn && logType != logError {
+		logType = logInfo
+	}
+	fmt.Printf("[%s] [%s] [%s] %s\n", time.Now().Format(time.RFC3339), logType, module, message)
+	return
 }

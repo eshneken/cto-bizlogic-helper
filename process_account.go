@@ -12,7 +12,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"time"
 )
 
 // AccountLookup Represents an account returned from the corporate feed
@@ -40,16 +39,15 @@ func processAccount(filename string) {
 	// determine appropriate instance-environment based on the value of the config.json setting
 	schema := SchemaMap[GlobalConfig.ECALOpportunitySyncTarget]
 	if len(schema) < 1 {
-		fmt.Printf("[%s] processAccount: Schema for [%s] not valid\n",
-			time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget)
+		logOutput(logError, "process_account", "Schema for "+GlobalConfig.ECALOpportunitySyncTarget+" not valid")
 		return
 	}
 
 	// open file for reading
 	file, err := os.Open(filename)
 	if err != nil {
-		fmt.Printf("[%s] processAccount: Error opening file [%s]: %s\n",
-			time.Now().Format(time.RFC3339), filename, err.Error())
+		message := fmt.Sprintf("Error opening file (%s): %s", filename, err.Error())
+		logOutput(logError, "process_account", message)
 		return
 	}
 	defer file.Close()
@@ -57,27 +55,29 @@ func processAccount(filename string) {
 	// seek 10 bytes (chars) to advance past {"items":
 	_, err = file.Seek(10, io.SeekStart)
 	if err != nil {
-		fmt.Printf("[%s] processAccount: Error advancing file stream to position 10: %s\n",
-			time.Now().Format(time.RFC3339), err.Error())
+		message := fmt.Sprintf("Error advancing file stream to position 10: %s", err.Error())
+		logOutput(logError, "process_account", message)
 		return
 	}
 
 	// decode full account list from response
 	decoder := json.NewDecoder(file)
-	fmt.Printf("[%s] [%s] processAccount: START Processing accounts\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget)
+	logOutput(logInfo, "process_account", "START Processing accounts ("+GlobalConfig.ECALOpportunitySyncTarget+")")
 
 	// start a DB transaction
 	tx, err := DBPool.Begin()
 	defer tx.Rollback()
 	if err != nil {
-		fmt.Printf("[%s] [%s] processAccount: Error creating DB transaction: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		message := fmt.Sprintf("Error creating DB transaction (%s): %s", GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		logOutput(logError, "process_account", message)
 		return
 	}
 
 	// delete all data from LookupAccount table
 	_, err = tx.Exec("DELETE FROM " + schema + ".LookupAccount")
 	if err != nil {
-		fmt.Printf("[%s] [%s] processAccount: Unable to delete from LookupAccount: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		message := fmt.Sprintf("Unable to delete from LookupAccount (%s): %s", GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		logOutput(logError, "process_account", message)
 		return
 	}
 
@@ -91,15 +91,16 @@ func processAccount(filename string) {
 	insertStmt, err := tx.Prepare(query)
 	defer insertStmt.Close()
 	if err != nil {
-		fmt.Printf("[%s] [%s] processAccount: Unable to prepare statement for insert: %s\n", time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		message := fmt.Sprintf("Unable to prepare statement for insert (%s): %s", GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		logOutput(logError, "process_account", message)
 		return
 	}
 
 	// consume the opening array brace
 	_, err = decoder.Token()
 	if err != nil {
-		fmt.Printf("[%s] [%s] processAccount: Error decoding opening array token: %s\n",
-			time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		message := fmt.Sprintf("Error decoding opening array token (%s): %s", GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		logOutput(logError, "process_account", message)
 		return
 	}
 
@@ -111,8 +112,9 @@ func processAccount(filename string) {
 		var account AccountLookup
 		err := decoder.Decode(&account)
 		if err != nil {
-			fmt.Printf("[%s] [%s] processAccount: Error decoding account %d: %s\n",
-				time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, counter, err.Error())
+			message := fmt.Sprintf("Error decoding account (%s) %d: %s",
+				GlobalConfig.ECALOpportunitySyncTarget, counter, err.Error())
+			logOutput(logError, "process_account", message)
 			return
 		}
 
@@ -130,8 +132,9 @@ func processAccount(filename string) {
 			loaded++
 		}
 		if err != nil {
-			fmt.Printf("[%s] [%s] processAccount: Unable to insert account %s into LookupAccount: %s\n", time.Now().Format(time.RFC3339),
-				GlobalConfig.ECALOpportunitySyncTarget, account.AccountName, err.Error())
+			message := fmt.Sprintf("Unable to insert account %s into LookupAccount (%s): %s", account.AccountName,
+				GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+			logOutput(logError, "process_account", message)
 			return
 		}
 
@@ -141,21 +144,23 @@ func processAccount(filename string) {
 	// consume the closing array brace
 	_, err = decoder.Token()
 	if err != nil {
-		fmt.Printf("[%s] [%s] processIdentity: Error decoding closing array token: %s\n",
-			time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		message := fmt.Sprintf("Error decoding closing array token (%s): %s\n", GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		logOutput(logError, "process_account", message)
 		return
 	}
 
 	// complete the transaction
 	err = tx.Commit()
 	if err != nil {
-		fmt.Printf("[%s] [%s] processAccount: Error committing transaction: %s\n", time.Now().Format(time.RFC3339),
+		message := fmt.Sprintf("Error committing transaction (%s): %s\n",
 			GlobalConfig.ECALOpportunitySyncTarget, err.Error())
+		logOutput(logError, "process_account", message)
 		return
 	}
 
-	fmt.Printf("[%s] [%s] processAccount: DONE Processing %d accounts and loaded %d\n",
-		time.Now().Format(time.RFC3339), GlobalConfig.ECALOpportunitySyncTarget, counter, loaded)
+	message := fmt.Sprintf("DONE Processing %d accounts and loaded %d for %s\n",
+		counter, loaded, GlobalConfig.ECALOpportunitySyncTarget)
+	logOutput(logInfo, "process_account", message)
 }
 
 //

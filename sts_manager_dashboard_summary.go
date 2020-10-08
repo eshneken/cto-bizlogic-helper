@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 )
 
 //
@@ -26,7 +25,7 @@ func getSTSManagerDashboardSummaryHandler(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		w.WriteHeader(500)
 		fmt.Fprintf(w, "Error in input parameters or processing; please contact your service administrator")
-		fmt.Printf("***ERROR: %s\n", string(err.Error()))
+		logOutput(logError, "sts_manager_query", string(err.Error()))
 		return
 	}
 
@@ -46,7 +45,7 @@ func getSTSManagerDashboardSummaryHandler(w http.ResponseWriter, r *http.Request
 func getSTSManagerDashboardSummary(managerEmail string, instanceEnv string) (string, error) {
 	// inject the correct schema name into the query
 	if len(instanceEnv) < 1 {
-		thisError := fmt.Sprintf("[%s] [%s] [%s] instanceEnvironment query parameter is invalid", time.Now().Format(time.RFC3339), instanceEnv, managerEmail)
+		thisError := fmt.Sprintf("instanceEnvironment query parameter is invalid (%s, %s)", instanceEnv, managerEmail)
 		return "", errors.New(thisError)
 	}
 
@@ -101,7 +100,7 @@ func getSTSManagerDashboardSummary(managerEmail string, instanceEnv string) (str
 	// run the query
 	rows, err := DBPool.Query(query, managerEmail)
 	if err != nil {
-		thisError := fmt.Sprintf("[%s] [%s] [%s] Error running query: %s", time.Now().Format(time.RFC3339), instanceEnv, managerEmail, err.Error())
+		thisError := fmt.Sprintf("Error running query (%s, %s): %s", instanceEnv, managerEmail, err.Error())
 		return "", errors.New(thisError)
 	}
 	defer rows.Close()
@@ -115,7 +114,7 @@ func getSTSManagerDashboardSummary(managerEmail string, instanceEnv string) (str
 	for rows.Next() {
 		err := rows.Scan(&id, &name, &email, &pathID, &pathName, &totalTasksInPath, &tasksCompleted, &tasksValidated, &lastActivity)
 		if err != nil {
-			thisError := fmt.Sprintf("[%s] [%s] [%s] Error scanning row: %s", time.Now().Format(time.RFC3339), instanceEnv, managerEmail, err.Error())
+			thisError := fmt.Sprintf("Error scanning row (%s, %s): %s", instanceEnv, managerEmail, err.Error())
 			return "", errors.New(thisError)
 		}
 		result += fmt.Sprintf("{\"id\": %s, \"name\": \"%s\", \"email\": \"%s\", \"pathId\": %s, \"pathName\": \"%s\", \"totalTasksInPath\": %s, \"tasksCompleted\": %s, \"tasksValidated\": %s, \"lastActivity\": \"%s\"},",
@@ -125,7 +124,5 @@ func getSTSManagerDashboardSummary(managerEmail string, instanceEnv string) (str
 
 	// string the trailing 'or' field if it exists
 	result = strings.TrimSuffix(result, ",")
-
-	//fmt.Printf("[%s] [%s] [%s] getSTSManagerDashboardSummary: results=%d\n", time.Now().Format(time.RFC3339), instanceEnv, managerEmail, count)
 	return result, nil
 }

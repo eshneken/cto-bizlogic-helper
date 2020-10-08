@@ -13,7 +13,6 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
-	"time"
 )
 
 // Employee represents an individual returned from the corporate feed
@@ -67,8 +66,8 @@ type Employee struct {
 func processIdentity(filename string) {
 	file, err := os.Open(filename)
 	if err != nil {
-		fmt.Printf("[%s] processIdentity: Error opening file [%s]: %s\n",
-			time.Now().Format(time.RFC3339), filename, err.Error())
+		message := fmt.Sprintf("Error opening file (%s): %s", filename, err.Error())
+		logOutput(logError, "process_identity", message)
 		return
 	}
 	defer file.Close()
@@ -76,29 +75,29 @@ func processIdentity(filename string) {
 	// seek 10 bytes (chars) to advance past {"items":
 	_, err = file.Seek(10, io.SeekStart)
 	if err != nil {
-		fmt.Printf("[%s] processIdentity: Error advancing file stream to position 10: %s\n",
-			time.Now().Format(time.RFC3339), err.Error())
+		message := fmt.Sprintf("Error advancing file stream to position 10: %s", err.Error())
+		logOutput(logError, "process_identity", message)
 		return
 	}
 
 	// create a JSON stream decoder
 	decoder := json.NewDecoder(file)
-	fmt.Printf("[%s] processIdentity: START Processing identities\n", time.Now().Format(time.RFC3339))
+	logOutput(logError, "process_identity", "START Processing identities")
 
 	// start a DB transaction
 	tx, err := DBPool.Begin()
 	defer tx.Rollback()
 	if err != nil {
-		fmt.Printf("[%s] processIdentity: Error starting DB transaction: %s\n",
-			time.Now().Format(time.RFC3339), err.Error())
+		message := fmt.Sprintf("Error starting DB transaction: %s", err.Error())
+		logOutput(logError, "process_identity", message)
 		return
 	}
 
 	// delete all data from LookupOpportunity table
 	_, err = tx.Exec("DELETE FROM CTO_COMMON.ORACLE_EMPLOYEES")
 	if err != nil {
-		fmt.Printf("[%s] processIdentity: Error deleting from CTO_COMMON.ORACLE_EMPLOYEES: %s\n",
-			time.Now().Format(time.RFC3339), err.Error())
+		message := fmt.Sprintf("Error deleting from CTO_COMMON.ORACLE_EMPLOYEES: %s", err.Error())
+		logOutput(logError, "process_identity", message)
 		return
 	}
 
@@ -160,16 +159,16 @@ func processIdentity(filename string) {
 	insertStmt, err := tx.Prepare(query)
 	defer insertStmt.Close()
 	if err != nil {
-		fmt.Printf("[%s] processIdentity: Error preparing insert statement: %s\n",
-			time.Now().Format(time.RFC3339), err.Error())
+		message := fmt.Sprintf("Error preparing insert statement: %s", err.Error())
+		logOutput(logError, "process_identity", message)
 		return
 	}
 
 	// consume the opening array brace
 	_, err = decoder.Token()
 	if err != nil {
-		fmt.Printf("[%s] processIdentity: Error decoding opening array token: %s\n",
-			time.Now().Format(time.RFC3339), err.Error())
+		message := fmt.Sprintf("Error decoding opening array token: %s", err.Error())
+		logOutput(logError, "process_identity", message)
 		return
 	}
 
@@ -184,8 +183,8 @@ func processIdentity(filename string) {
 		var person Employee
 		err := decoder.Decode(&person)
 		if err != nil {
-			fmt.Printf("[%s] processIdentity: Error decoding person %d: %s\n",
-				time.Now().Format(time.RFC3339), counter, err.Error())
+			message := fmt.Sprintf("Error decoding person %d: %s", counter, err.Error())
+			logOutput(logError, "process_identity", message)
 			return
 		}
 		counter++
@@ -215,8 +214,8 @@ func processIdentity(filename string) {
 				person.NumDirects, person.NumUsers, person.OldUID, person.ChainLevel, person.OracleUID, person.LobDetail,
 				person.HierLevel, person.TopMgrSeq, person.LobTag, person.LobTagParent)
 			if err != nil {
-				fmt.Printf("[%s] processIdentity: Error inserting person [%s]: %s\n",
-					time.Now().Format(time.RFC3339), person.EmployeeFullName, err.Error())
+				message := fmt.Sprintf("Error inserting person (%s): %s", person.EmployeeFullName, err.Error())
+				logOutput(logError, "process_identity", message)
 				return
 			}
 
@@ -244,16 +243,16 @@ func processIdentity(filename string) {
 	// consume the closing array brace
 	_, err = decoder.Token()
 	if err != nil {
-		fmt.Printf("[%s] processIdentity: Error decoding closing array token: %s\n",
-			time.Now().Format(time.RFC3339), err.Error())
+		message := fmt.Sprintf("Error decoding closing array token: %s", err.Error())
+		logOutput(logError, "process_identity", message)
 		return
 	}
 
 	// complete the transaction
 	err = tx.Commit()
 	if err != nil {
-		fmt.Printf("[%s] processIdentity: Error committing transaction: %s\n",
-			time.Now().Format(time.RFC3339), err.Error())
+		message := fmt.Sprintf("Error committing transaction: %s", err.Error())
+		logOutput(logError, "process_identity", message)
 		return
 	}
 
@@ -261,12 +260,13 @@ func processIdentity(filename string) {
 	identityString = identityString[0:len(identityString)-1] + "]}"
 	err = ioutil.WriteFile(GlobalConfig.IdentityFilename, []byte(identityString), 0700)
 	if err != nil {
-		fmt.Printf("[%s] processIdentity: Error writing [%s] to filesystem: %s\n",
-			time.Now().Format(time.RFC3339), GlobalConfig.IdentityFilename, err.Error())
+		message := fmt.Sprintf("Error writing (%s) to filesystem: %s\n", GlobalConfig.IdentityFilename, err.Error())
+		logOutput(logError, "process_identity", message)
 	}
 
-	fmt.Printf("[%s] processIdentity: DONE processing %d employees, loading %d current employees and writing %d employees to %s\n",
-		time.Now().Format(time.RFC3339), counter, insertedEmps, includedEmps, GlobalConfig.IdentityFilename)
+	message := fmt.Sprintf("DONE processing %d employees, loading %d current employees and writing %d employees to %s",
+		counter, insertedEmps, includedEmps, GlobalConfig.IdentityFilename)
+	logOutput(logInfo, "process_identity", message)
 }
 
 //

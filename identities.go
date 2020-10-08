@@ -16,14 +16,14 @@ import (
 func postIdentitiesQueryHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		fmt.Println(outputHTTPError("postIdentitiesQueryHandler", err, nil))
+		logOutput(logError, "identities", outputHTTPError("postIdentitiesQueryHandler", err, nil))
 		w.WriteHeader(500)
 		return
 	}
 	// write identities to filesystem
 	err = ioutil.WriteFile(GlobalConfig.IdentityFilename, body, 0700)
 	if err != nil {
-		fmt.Println(outputHTTPError("postIdentitiesQueryHandler", err, nil))
+		logOutput(logError, "identities", outputHTTPError("postIdentitiesQueryHandler", err, nil))
 		w.WriteHeader(500)
 	}
 }
@@ -35,7 +35,7 @@ func getIdentitiesQueryHandler(w http.ResponseWriter, r *http.Request) {
 	// open identities JSON file from filesystem
 	data, err := ioutil.ReadFile(GlobalConfig.IdentityFilename)
 	if err != nil {
-		fmt.Println(outputHTTPError("getIdentitiesQueryHandler", err, nil))
+		logOutput(logError, "identities", outputHTTPError("getIdentitiesQueryHandler", err, nil))
 		w.WriteHeader(500)
 		return
 	}
