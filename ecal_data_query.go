@@ -171,7 +171,7 @@ end;
 			to_char(os.creationdate, 'MM-DD-YYYY') as latest_status_date,
 			os.lastupdatedby as latest_status_author,
 			-- 08-OCT-2020 PBOCCHIO START
-			o.lateststagedone,
+			nvl(o.lateststagedone, ''),
 			(select decode(sum(ora.done),0, min(s.phase), max(s.phase)) phase
 				from %SCHEMA%.opportunityrequiredarti ora
 				inner join %SCHEMA%.requiredartifacts ra on ra.id = ora.requiredartifact
