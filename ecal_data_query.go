@@ -169,7 +169,19 @@ end;
 			where o.id = ora3.opportunity and ra3.name = 'Consumption Plan') as consumption_plan_complete,
 			translate(nvl(os.status, 'No Status Entered'), chr(10)||chr(11)||chr(13)||chr(34), '  ') as latest_status,
 			to_char(os.creationdate, 'MM-DD-YYYY') as latest_status_date,
-			os.lastupdatedby as latest_status_author
+			os.lastupdatedby as latest_status_author,
+			-- 08-OCT-2020 PBOCCHIO START
+			, o.lateststagedone
+			, (select decode(sum(ora.done),0, min(s.phase), max(s.phase)) phase
+				from %SCHEMA%.opportunityrequiredarti ora
+				inner join %SCHEMA%.requiredartifacts ra on ra.id = ora.requiredartifact
+				inner join %SCHEMA%.ecalstage s on ra.ecalstage = s.id 
+				inner join %SCHEMA%.ecalphase p on s.phase = p.id
+				where ora.opportunity = o.id 
+				group by ora.opportunity ) as currentphase
+			, (select listagg(u.useremail,':') within group (order by DECODE(u.useremail,o.technicallead,1,0) desc, u.useremail) from %SCHEMA%.useraccount ua inner join %SCHEMA%.user1 u on u.id = ua.user1 where ua.account = o.account  ) resourceslist
+			, (select listagg(DECODE(u.useremail,o.technicallead,'Y','N'),':') within group (order by DECODE(u.useremail,o.technicallead,1,0) desc, u.useremail) from %SCHEMA%.useraccount ua inner join %SCHEMA%.user1 u on u.id = ua.user1 where ua.account = o.account ) techleadlist
+			-- 08-OCT-2020 PBOCCHIO END
 		FROM %SCHEMA%.Opportunity o
 		INNER JOIN %SCHEMA%.Account a ON a.id = o.account
 		LEFT OUTER JOIN %SCHEMA%.OpportunityTechHealth th ON th.opportunity = o.id
@@ -178,7 +190,7 @@ end;
 		LEFT OUTER JOIN %SCHEMA%.OpportunityStatus os ON o.id = os.opportunity
 		and not exists (select 1 FROM %SCHEMA%.OpportunityStatus os1 where os1.opportunity = o.id and os1.creationdate > os.creationdate)`
 
-	var jsonResultTemplate = `{"ecal_workload_id":"%s","ecal_account_id":"%s","opportunity_id":"%s","workload_type":"%s","workload_identifier":"%s","account_name":"%s","cim_id":"%s","workload_summary":"%s","color":"%s","latest_ecal_stage_done": "%s","csa_executed":"%s","tech_lead":"%s","tech_manager":"%s","poc_required":"%s","poc_enddate":"%s","poc_status":"%s","poc_resolution":"%s","security_signoff":"%s","technical_signoff":"%s","cons_plan_signoff": "%s","cc_involved":"%s","cc_done":"%s","tech_blockers":"%s","commercial_blockers":"%s","covid_impact":"%s","ocs_engaged":"%s","expansion":"%s","tech_decider":"%s","tech_signoff_date":"%s","migration_by": "%s","tiger_se_email": "%s","partner_name":"%s","workload_progression":"%s","adopter_email":"%s","adopter_name":"%s","implementer_email":"%s","implementer_name":"%s","future_state_complete":"%s","current_state_complete":"%s","consumption_plan_complete":"%s","latest_status":"%s","latest_status_date":"%s","latest_status_author":"%s"},`
+	var jsonResultTemplate = `{"ecal_workload_id":"%s","ecal_account_id":"%s","opportunity_id":"%s","workload_type":"%s","workload_identifier":"%s","account_name":"%s","cim_id":"%s","workload_summary":"%s","color":"%s","latest_ecal_stage_done": "%s","csa_executed":"%s","tech_lead":"%s","tech_manager":"%s","poc_required":"%s","poc_enddate":"%s","poc_status":"%s","poc_resolution":"%s","security_signoff":"%s","technical_signoff":"%s","cons_plan_signoff": "%s","cc_involved":"%s","cc_done":"%s","tech_blockers":"%s","commercial_blockers":"%s","covid_impact":"%s","ocs_engaged":"%s","expansion":"%s","tech_decider":"%s","tech_signoff_date":"%s","migration_by": "%s","tiger_se_email": "%s","partner_name":"%s","workload_progression":"%s","adopter_email":"%s","adopter_name":"%s","implementer_email":"%s","implementer_name":"%s","future_state_complete":"%s","current_state_complete":"%s","consumption_plan_complete":"%s","latest_status":"%s","latest_status_date":"%s","latest_status_author":"%s","latest_stage_done":"%s","current_phase":"%s","resource_list":"%s","techlead_list":"%s"},`
 
 	// replace the %SCHEMA% template with the correct schema name
 	query := strings.ReplaceAll(template, "%SCHEMA%", SchemaMap[instanceEnv])
@@ -197,6 +209,7 @@ end;
 	var csaExecuted, techLead, techManager, pocRequired, pocEndDate, pocStatus, pocResolution, securitySignoff, technicalSignoff, consPlanSignoff string
 	var ccInvolved, ccDone, techBlockers, commercialBlockers, covidImpact, ocsEngaged, expansion, techDecider, techSignoffDate, migrationBy, tigerSeEmail string
 	var partnerName, workloadProgression, adopterEmail, adopterName, implementerEmail, implementerName, futureStateComplete, currentStateComplete, consumptionPlanComplete, latestStatus, latestStatusDate, latestStatusAuthor string
+	var latestStageDone, currentPhase, resourceList, techLeadList string
 
 	// step through each row returned and add to the query filter using the correct format
 	result := ""
@@ -205,7 +218,8 @@ end;
 		err := rows.Scan(&ecalWorkloadID, &ecalAccountID, &opportunityID, &workloadType, &workloadIdentifier, &accountName, &cimID, &workloadSummary, &color, &latestECALStageDone,
 			&csaExecuted, &techLead, &techManager, &pocRequired, &pocEndDate, &pocStatus, &pocResolution, &securitySignoff, &technicalSignoff, &consPlanSignoff,
 			&ccInvolved, &ccDone, &techBlockers, &commercialBlockers, &covidImpact, &ocsEngaged, &expansion, &techDecider, &techSignoffDate, &migrationBy, &tigerSeEmail,
-			&partnerName, &workloadProgression, &adopterEmail, &adopterName, &implementerEmail, &implementerName, &futureStateComplete, &currentStateComplete, &consumptionPlanComplete, &latestStatus, &latestStatusDate, &latestStatusAuthor)
+			&partnerName, &workloadProgression, &adopterEmail, &adopterName, &implementerEmail, &implementerName, &futureStateComplete, &currentStateComplete, &consumptionPlanComplete, &latestStatus, &latestStatusDate, &latestStatusAuthor,
+			&latestStageDone, &currentPhase, &resourceList, &techLeadList)
 		if err != nil {
 			thisError := fmt.Sprintf("Error scanning row (%s): %s", instanceEnv, err.Error())
 			return "", errors.New(thisError)
@@ -215,7 +229,8 @@ end;
 			ecalWorkloadID, ecalAccountID, opportunityID, workloadType, workloadIdentifier, accountName, cimID, workloadSummary, color, latestECALStageDone,
 			csaExecuted, techLead, techManager, pocRequired, pocEndDate, pocStatus, pocResolution, securitySignoff, technicalSignoff, consPlanSignoff,
 			ccInvolved, ccDone, techBlockers, commercialBlockers, covidImpact, ocsEngaged, expansion, techDecider, techSignoffDate, migrationBy, tigerSeEmail,
-			partnerName, workloadProgression, adopterEmail, adopterName, implementerEmail, implementerName, futureStateComplete, currentStateComplete, consumptionPlanComplete, latestStatus, latestStatusDate, latestStatusAuthor)
+			partnerName, workloadProgression, adopterEmail, adopterName, implementerEmail, implementerName, futureStateComplete, currentStateComplete, consumptionPlanComplete, latestStatus, latestStatusDate, latestStatusAuthor,
+			latestStageDone, currentPhase, resourceList, techLeadList)
 		count++
 	}
 
