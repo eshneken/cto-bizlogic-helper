@@ -67,7 +67,7 @@ func processIdentity(filename string) {
 	file, err := os.Open(filename)
 	if err != nil {
 		message := fmt.Sprintf("Error opening file (%s): %s", filename, err.Error())
-		logOutput(logError, "process_identity", message)
+		logOutput(logInfo, "process_identity", message)
 		return
 	}
 	defer file.Close()
