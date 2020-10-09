@@ -111,7 +111,7 @@ func main() {
 	logOutput(logInfo, "main", logMessage)
 
 	// start HTTP listener
-	logOutput(logInfo, "main", "Starting HTTP Listener on port "+GlobalConfig.ServiceListenPort+"...\n")
+	logOutput(logInfo, "main", "Starting HTTP Listener on port "+GlobalConfig.ServiceListenPort+"...")
 	http.ListenAndServe(":"+GlobalConfig.ServiceListenPort, nil)
 }
 
