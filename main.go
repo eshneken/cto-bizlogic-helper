@@ -32,6 +32,7 @@ type Config struct {
 	DBConnectString           string
 	IdentityFilename          string
 	IdentityMgrLeads          string
+	MgrAppMapping             string
 	InstanceEnvironments      string
 	SchemaNames               string
 	ECALOpportunitySyncTarget string
@@ -50,6 +51,9 @@ var SchemaMap map[string]string
 
 // IdentityMgrLeads contains the top level managers who should be included in the list of employees loaded into the platform
 var IdentityMgrLeads []string
+
+// MgrAppMapping is a parallel array mapping the IdentityMgrLead in the same position to the VBCS apps that org is mapped to
+var MgrAppMapping []string
 
 // Logging constants
 const logInfo = "INFO"
@@ -177,6 +181,9 @@ func loadConfig(filename string, skipVault bool) Config {
 
 	// Convert identity manager leads into an array of strings
 	IdentityMgrLeads = strings.Split(config.IdentityMgrLeads, ",")
+
+	// Convert manager mappings into an array of strings
+	MgrAppMapping = strings.Split(config.MgrAppMapping, ",")
 
 	// if vault integration is off, return the config struct as-is.  no need for further decoding.
 	if skipVault == true {

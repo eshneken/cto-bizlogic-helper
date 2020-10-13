@@ -63,6 +63,8 @@ type Employee struct {
 	LobTagParent         string `json:"lob_tag_parent"`
 }
 
+const noMatch = "NOMATCH"
+
 func processIdentity(filename string) {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -175,6 +177,9 @@ func processIdentity(filename string) {
 	// initialize identityString
 	identityString := "{\"items\":["
 
+	// initialize mgrAppMap
+	mgrAppMapping := noMatch
+
 	// iterate each employee
 	includedEmps := 0
 	insertedEmps := 0
@@ -222,7 +227,8 @@ func processIdentity(filename string) {
 			// check to see if this person is part of the management chain of one of the top level managers
 			// who are utilizing the CTO platform.  If they are, we write them to the identity file since they
 			// will be included in the identity synchronization.
-			if includeUserInPlatform(person.MgrChain) {
+			mgrAppMapping = includeUserInPlatform(person.MgrChain)
+			if mgrAppMapping != noMatch {
 				nameSplit := strings.SplitAfterN(person.EmployeeFullName, " ", 2)
 				identityString = identityString +
 					"{\"id\":\"" + person.EmployeeEmailAddress +
@@ -232,7 +238,9 @@ func processIdentity(filename string) {
 					"\",\"givenname\":\"" + strings.TrimRight(nameSplit[0], " ") +
 					"\",\"displayname\":\"" + person.EmployeeFullName +
 					"\",\"lob\":\"" + person.LobTag +
-					"\",\"num_directs\":" + person.NumDirects + "},"
+					"\",\"num_directs\":" + person.NumDirects +
+					",\"app_map\":\"" + mgrAppMapping +
+					"\"},"
 				includedEmps++
 			}
 
@@ -288,18 +296,19 @@ func convertEmailToDN(email string) string {
 }
 
 // Takes a mgrChain in the form of email1@oracle.com // email2@oracle.com // email3@oracle.com and iterates through
-// the list of IdentityMgrLeads to see if there is a match.  Returns true if the employee whose manager chain has been
-// passed in contains one of the managers we have tagged as being part of this app
-func includeUserInPlatform(mgrChain string) bool {
+// the list of IdentityMgrLeads to see if there is a match.  Returns the "noMatch" constant token if there is no match.
+// Otherwise, returns the token from the MgrAppMapping if the employee whose manager chain has been
+// passed in contains one of the managers we have tagged as being part of this application set
+func includeUserInPlatform(mgrChain string) string {
 	if len(mgrChain) < 1 {
-		return false
+		return noMatch
 	}
 
-	for _, manager := range IdentityMgrLeads {
+	for i, manager := range IdentityMgrLeads {
 		if strings.Contains(mgrChain, manager) {
-			return true
+			return MgrAppMapping[i]
 		}
 	}
 
-	return false
+	return noMatch
 }
