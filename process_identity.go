@@ -82,7 +82,7 @@ func processIdentity(filename string) {
 
 	// create a JSON stream decoder
 	decoder := json.NewDecoder(file)
-	logOutput(logError, "process_identity", "START Processing identities")
+	logOutput(logInfo, "process_identity", "START Processing identities")
 
 	// start a DB transaction
 	tx, err := DBPool.Begin()
