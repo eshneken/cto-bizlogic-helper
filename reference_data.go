@@ -68,7 +68,7 @@ func postReferenceDataHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Processing Error")
 			w.WriteHeader(500)
 		}
-		message := fmt.Sprintf("[START Collecting Data (%s)", dataType)
+		message := fmt.Sprintf("START Collecting Data (%s)", dataType)
 		logOutput(logInfo, "reference_data", message)
 	} else {
 		// all other normative positions (middle & last) require appending to the existing file
