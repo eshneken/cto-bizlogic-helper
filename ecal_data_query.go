@@ -166,7 +166,7 @@ end;
 			FROM %SCHEMA%.OpportunityRequiredArti ora3
 			INNER JOIN %SCHEMA%.RequiredArtifacts ra3 ON ora3.requiredartifact = ra3.id
 			where o.id = ora3.opportunity and ra3.name = 'Consumption Plan') as consumption_plan_complete,
-			translate(nvl(os.status, 'No Status Entered'), chr(10)||chr(11)||chr(13)||chr(34), '  ') as latest_status,
+			replace(translate(nvl(os.status, 'No Status Entered'), chr(10)||chr(11)||chr(13)||chr(34), '  '), '•', '*') as latest_status,
 			to_char(os.creationdate, 'MM-DD-YYYY') as latest_status_date,
 			os.lastupdatedby as latest_status_author,
 			-- 08-OCT-2020 PBOCCHIO START
