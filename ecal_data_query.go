@@ -142,15 +142,15 @@ end;
 			nvl(th.coronavirusimpact, 0) as covid_impact,
 			nvl(th.oracleconsultingengaged, 0) as ocs_engaged,
 			nvl(th.expansion, 0) as expansion,
-			translate(th.technicaldecisionmakern, chr(10)||chr(11)||chr(13)||chr(34), '  ') as tech_decider,
+			translate(th.technicaldecisionmakern, chr(9)||chr(10)||chr(11)||chr(13)||chr(34), '  ') as tech_decider,
 			to_char(th.technicalsignoffdate, 'MM-DD-YYYY') as tech_signoff_date,
-			translate(th.migrationrunby, chr(10)||chr(11)||chr(13)||chr(34), '  ') as migration_by,
-			translate(th.partnername, chr(10)||chr(11)||chr(13)||chr(34), '  ') as partner_name,
-			translate(th.workloadprogressionstage, chr(10)||chr(11)||chr(13)||chr(34), '  ') as workload_progression,
-			translate(th.adoptionowneremail, chr(10)||chr(11)||chr(13)||chr(34), '  ') as adopter_email,
-			translate(th.adoptionownernametitle, chr(10)||chr(11)||chr(13)||chr(34), '  ') as adopter_name,
-			translate(th.implementeremail, chr(10)||chr(11)||chr(13)||chr(34), '  ') as implementer_email,
-			translate(th.implementernametitle, chr(10)||chr(11)||chr(13)||chr(34), '  ') as implementer_name,
+			translate(th.migrationrunby, chr(9)||chr(10)||chr(11)||chr(13)||chr(34), '  ') as migration_by,
+			translate(th.partnername, chr(9)||chr(10)||chr(11)||chr(13)||chr(34), '  ') as partner_name,
+			translate(th.workloadprogressionstage, chr(9)||chr(10)||chr(11)||chr(13)||chr(34), '  ') as workload_progression,
+			translate(th.adoptionowneremail, chr(9)||chr(10)||chr(11)||chr(13)||chr(34), '  ') as adopter_email,
+			translate(th.adoptionownernametitle, chr(9)||chr(10)||chr(11)||chr(13)||chr(34), '  ') as adopter_name,
+			translate(th.implementeremail, chr(9)||chr(10)||chr(11)||chr(13)||chr(34), '  ') as implementer_email,
+			translate(th.implementernametitle, chr(9)||chr(10)||chr(11)||chr(13)||chr(34), '  ') as implementer_name,
 			(select ora1.done
 			FROM %SCHEMA%.OpportunityRequiredArti ora1
 			INNER JOIN %SCHEMA%.RequiredArtifacts ra1 ON ora1.requiredartifact = ra1.id
@@ -166,7 +166,7 @@ end;
 			FROM %SCHEMA%.OpportunityRequiredArti ora3
 			INNER JOIN %SCHEMA%.RequiredArtifacts ra3 ON ora3.requiredartifact = ra3.id
 			where o.id = ora3.opportunity and ra3.name = 'Consumption Plan') as consumption_plan_complete,
-			replace(translate(nvl(os.status, 'No Status Entered'), chr(10)||chr(11)||chr(13)||chr(34), '  '), '•', '*') as latest_status,
+			replace(translate(nvl(os.status, 'No Status Entered'), chr(9)||chr(10)||chr(11)||chr(13)||chr(34), '  '), '•', '-') as latest_status,
 			to_char(os.creationdate, 'MM-DD-YYYY') as latest_status_date,
 			os.lastupdatedby as latest_status_author,
 			-- 08-OCT-2020 PBOCCHIO START
