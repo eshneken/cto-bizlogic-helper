@@ -240,7 +240,7 @@ func processIdentity(filename string) {
 					"\",\"givenname\":\"" + strings.TrimRight(nameSplit[0], " ") +
 					"\",\"displayname\":\"" + person.EmployeeFullName +
 					"\",\"lob\":\"" + person.LobTag +
-					"\",\"lob_parent\":\"" + person.LobTagParent +
+					"\",\"lob_parent\":\"" + person.LobTagRoot +
 					"\",\"num_directs\":" + person.NumDirects +
 					",\"app_map\":\"" + mgrAppMapping +
 					"\"},"
