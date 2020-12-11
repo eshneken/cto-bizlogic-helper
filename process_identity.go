@@ -61,6 +61,7 @@ type Employee struct {
 	TopMgrSeq            string `json:"top_mgr_seq"`
 	LobTag               string `json:"lob_tag"`
 	LobTagParent         string `json:"lob_tag_parent"`
+	LobTagRoot           string `json:"lob_tag_root"`
 }
 
 const noMatch = "NOMATCH"
@@ -148,14 +149,15 @@ func processIdentity(filename string) {
 		HIER_LEVEL, 
 		TOP_MGR_SEQ,
 		LOB_TAG,
-		LOB_TAG_PARENT 
+		LOB_TAG_PARENT,
+		LOB_TAG_ROOT 
 	) VALUES (
 		TO_NUMBER(:1), :2, :3, :4, :5,:6, :7, :8, :9, :10, :11, TO_DATE(:12, 'YYYY-MM-DD'), 
 		TO_DATE(:13, 'YYYY-MM-DD'), TO_DATE(:14, 'YYYY-MM-DD'), :15, 
 		TO_DATE(:16, 'YYYY-MM-DD'), :17, :18, :19, :20, :21, :22, :23, :24, 
 		TO_DATE(:25, 'YYYY-MM-DD'), TO_DATE(:26, 'YYYY-MM-DD'), :27, :28, 
 		:29, :30, :31, :32, :33, :34, TO_NUMBER(:35), TO_NUMBER(:36), :37, TO_NUMBER(:38), :39, :40, TO_NUMBER(:41), TO_NUMBER(:42),
-		:43,:44
+		:43,:44,:45
 	)
 	`
 	insertStmt, err := tx.Prepare(query)
@@ -217,7 +219,7 @@ func processIdentity(filename string) {
 				person.LockRegion, person.LeftCompanyOn, person.Inactive, person.MgrLevel, person.State, person.City,
 				person.MgrChain, person.TopMgrDirMinus1, person.TopMgrDirMinus2, person.TopMgrDirMinus3, person.TopMgrDirMinus4,
 				person.NumDirects, person.NumUsers, person.OldUID, person.ChainLevel, person.OracleUID, person.LobDetail,
-				person.HierLevel, person.TopMgrSeq, person.LobTag, person.LobTagParent)
+				person.HierLevel, person.TopMgrSeq, person.LobTag, person.LobTagParent, person.LobTagRoot)
 			if err != nil {
 				message := fmt.Sprintf("Error inserting person (%s): %s", person.EmployeeFullName, err.Error())
 				logOutput(logError, "process_identity", message)
