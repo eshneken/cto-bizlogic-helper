@@ -52,6 +52,7 @@ func getSTSManagerDashboardSummary(managerEmail string, instanceEnv string) (str
 	// set the query
 	var template = `
 	   SELECT su.id as id,
+	    su.rolename,
 		su.firstname || ' ' || su.lastname as name, 
 		su.useremail as email, 
 		p.id as pathId,
@@ -106,19 +107,19 @@ func getSTSManagerDashboardSummary(managerEmail string, instanceEnv string) (str
 	defer rows.Close()
 
 	// vars to hold row results
-	var id, name, email, pathID, pathName, totalTasksInPath, tasksCompleted, tasksValidated, lastActivity string
+	var id, roleName, name, email, pathID, pathName, totalTasksInPath, tasksCompleted, tasksValidated, lastActivity string
 
 	// step through each row returned and add to the query filter using the correct format
 	result := ""
 	count := 0
 	for rows.Next() {
-		err := rows.Scan(&id, &name, &email, &pathID, &pathName, &totalTasksInPath, &tasksCompleted, &tasksValidated, &lastActivity)
+		err := rows.Scan(&id, &roleName, &name, &email, &pathID, &pathName, &totalTasksInPath, &tasksCompleted, &tasksValidated, &lastActivity)
 		if err != nil {
 			thisError := fmt.Sprintf("Error scanning row (%s, %s): %s", instanceEnv, managerEmail, err.Error())
 			return "", errors.New(thisError)
 		}
-		result += fmt.Sprintf("{\"id\": %s, \"name\": \"%s\", \"email\": \"%s\", \"pathId\": %s, \"pathName\": \"%s\", \"totalTasksInPath\": %s, \"tasksCompleted\": %s, \"tasksValidated\": %s, \"lastActivity\": \"%s\"},",
-			id, name, email, pathID, pathName, totalTasksInPath, tasksCompleted, tasksValidated, lastActivity)
+		result += fmt.Sprintf("{\"id\": %s, \"name\": \"%s\", \"email\": \"%s\", \"roleName\": \"%s\", \"pathId\": %s, \"pathName\": \"%s\", \"totalTasksInPath\": %s, \"tasksCompleted\": %s, \"tasksValidated\": %s, \"lastActivity\": \"%s\"},",
+			id, name, email, roleName, pathID, pathName, totalTasksInPath, tasksCompleted, tasksValidated, lastActivity)
 		count++
 	}
 
