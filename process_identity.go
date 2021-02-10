@@ -243,6 +243,7 @@ func processIdentity(filename string) {
 					"\",\"lob_parent\":\"" + person.LobTagRoot +
 					"\",\"num_directs\":" + person.NumDirects +
 					",\"app_map\":\"" + mgrAppMapping +
+					",\"mgr_chain\":\"" + person.MgrChain +
 					"\"},"
 				includedEmps++
 			}
