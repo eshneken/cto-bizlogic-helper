@@ -239,11 +239,11 @@ func processIdentity(filename string) {
 					"\",\"mail\":\"" + person.EmployeeEmailAddress +
 					"\",\"givenname\":\"" + strings.TrimRight(nameSplit[0], " ") +
 					"\",\"displayname\":\"" + person.EmployeeFullName +
+					"\",\"mgr_chain\":\"" + person.MgrChain +
 					"\",\"lob\":\"" + person.LobTag +
 					"\",\"lob_parent\":\"" + person.LobTagRoot +
 					"\",\"num_directs\":" + person.NumDirects +
 					",\"app_map\":\"" + mgrAppMapping +
-					",\"mgr_chain\":\"" + person.MgrChain +
 					"\"},"
 				includedEmps++
 			}
